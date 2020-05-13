@@ -1,6 +1,7 @@
 import asyncio
 import logging
 from upb.protocol import UPBProtocol
+from upb.util import encode_register_request
 
 class UPBClient:
 
@@ -60,6 +61,14 @@ class UPBClient:
         if self.reconnect:
             self.logger.debug("Protocol disconnected...reconnecting")
             await self.setup()
+
+    def send_packet(self, data):
+        self.protocol.transport.write(data + b'\r')
+
+    async def get_registers(self, network, device):
+        packet = encode_register_request(network, device)
+        self.send_packet(packet)
+        self.logger.info(repr(packet))
 
 async def create_upb_connection(port=None, host=None,
                                 disconnect_callback=None,
