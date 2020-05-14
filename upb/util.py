@@ -25,7 +25,6 @@ def encode_register_request(network, device, register_start=0, registers=16):
     control_word = pack('BB', *[data_len | link_bit | repeater_request, ack_request | transmit_cnt | transmit_seq])
     mdid_set = MdidSet.MDID_CORE_COMMANDS.value
     mdid_cmd = MdidCoreCmd.MDID_CORE_COMMAND_GETREGISTERVALUES.value
-    print(f"control: {control_word}, len: {len(control_word)}")
     msg = control_word
     msg += pack('B', network_id)
     msg += pack('B', destination_id)
