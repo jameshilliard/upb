@@ -3,12 +3,9 @@ from setuptools import setup
 
 setup(
     name='upb',
-    version='0.0.1',
-    packages=['upb'],
+    version='0.0.2',
+    packages=['upb', 'upb.tools'],
     install_requires=['pyserial-asyncio>=0.4.0'],
-    package_data={
-        '': ['CHANGELOG.md', 'bin/**/*'],
-    },
     exclude_package_data={'': ['test']},
     author='James Hilliard',
     author_email='james.hilliard1@gmail.com',
