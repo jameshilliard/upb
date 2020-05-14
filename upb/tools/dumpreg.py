@@ -1,6 +1,7 @@
 import asyncio
 import argparse
 import logging
+from pprint import pformat
 from upb import create_upb_connection
 
 logging.basicConfig(level=logging.DEBUG)
@@ -25,15 +26,16 @@ options = parser.parse_args()
 
 
 async def main():
-    client = await create_upb_connection(host=options.host, port=options.port, logger=logger)
+    loop = asyncio.get_event_loop()
+    client = await create_upb_connection(host=options.host, port=options.port, logger=logger, loop=loop)
     registers = await client.get_registers(options.network, options.device)
-    logger.info(f'registers: {registers}')
+    logger.info(f'registers: {pformat(registers)}')
+    client.stop()
 
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()
-    loop.create_task(main())
     try:
-        loop.run_forever()
+        loop.run_until_complete(main())
 
     except KeyboardInterrupt:
         loop.close()

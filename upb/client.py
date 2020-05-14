@@ -2,6 +2,7 @@ import asyncio
 import logging
 from upb.protocol import UPBProtocol
 from upb.util import encode_register_request
+from upb.register import reg_decode
 
 class UPBClient:
 
@@ -53,6 +54,13 @@ class UPBClient:
                 break
             await asyncio.sleep(self.reconnect_interval)
 
+    def stop(self):
+        """Shut down transport."""
+        self.reconnect = False
+        self.logger.debug("Shutting down.")
+        if self.transport:
+            self.transport.close()
+
     async def handle_disconnect_callback(self):
         """Reconnect automatically unless stopping."""
         self.is_connected = False
@@ -79,7 +87,7 @@ class UPBClient:
             index += len(response['register_val'])
             registers.extend(response['register_val'])
 
-        return bytes(registers)
+        return reg_decode(bytes(registers))
 
 async def create_upb_connection(port=None, host=None,
                                 disconnect_callback=None,
