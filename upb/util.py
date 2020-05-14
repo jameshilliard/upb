@@ -1,5 +1,6 @@
 from struct import pack
 from functools import reduce
+from binascii import hexlify
 
 from upb.const import UpbDeviceId, UpbReqRepeater, UpbReqAck, MdidSet, MdidCoreCmd, PimCommand
 
@@ -34,5 +35,5 @@ def encode_register_request(network, device, register_start=0, registers=16):
     msg += pack('B', registers)
     msg += pack('B', cksum(msg))
     packet = pack('B', PimCommand.UPB_NETWORK_TRANSMIT.value)
-    packet += msg.hex().upper().encode('ascii')
+    packet += hexlify(msg).swapcase()
     return packet

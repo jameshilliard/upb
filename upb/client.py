@@ -62,13 +62,24 @@ class UPBClient:
             self.logger.debug("Protocol disconnected...reconnecting")
             await self.setup()
 
-    def send_packet(self, data):
-        self.protocol.transport.write(data + b'\r')
+    async def get_registers(self, network, device, register_len=256):
+        """Fetch registers from device."""
+        registers = bytearray()
+        index = 0
+        while index < register_len:
+            start = index
+            remaining = register_len - index
+            if remaining >= 16:
+                req_len = 16
+            else:
+                req_len = remaining
+            packet = encode_register_request(network, device, start, req_len)
+            response = await self.protocol.send_packet(packet)
+            assert(response['setup_register'] == start)
+            index += len(response['register_val'])
+            registers.extend(response['register_val'])
 
-    async def get_registers(self, network, device):
-        packet = encode_register_request(network, device)
-        self.send_packet(packet)
-        self.logger.info(repr(packet))
+        return bytes(registers)
 
 async def create_upb_connection(port=None, host=None,
                                 disconnect_callback=None,

@@ -2,6 +2,7 @@ import asyncio
 import logging
 from pprint import pformat
 from binascii import unhexlify
+from collections import deque
 
 from upb.const import UpbMessage, UpbTransmission, \
     MdidSet, MdidCoreCmd, MdidDeviceControlCmd, MdidCoreReport, \
@@ -33,6 +34,39 @@ class UPBProtocol(asyncio.Protocol):
         self.packet_byte = 0
         self.packet_crumb = 0
         self.data_counter = 0
+        self.waiters = deque()
+        self.active_transaction = None
+        self.active_packet = None
+        self.in_transaction = False
+
+    async def send_packet(self, packet):
+        self.logger.debug("sending packet")
+        packet = await self._send_packet(packet)
+        return packet
+
+    def _send_packet(self, packet):
+        """Add packet to send queue."""
+        fut = self.loop.create_future()
+        self.waiters.append((fut, packet))
+        self._send_next_packet()
+        return fut
+
+    def _process_received_packet(self, packet):
+        if self.in_transaction:
+            self.active_transaction.set_result(packet)
+            self.active_transaction = None
+            self.in_transaction = False
+            self.active_packet = None
+
+    def _send_next_packet(self):
+        """Write next packet in send queue."""
+        if self.waiters and self.in_transaction is False:
+            waiter, packet = self.waiters.popleft()
+            self.logger.debug(f'sending packet: {packet}')
+            self.active_transaction = waiter
+            self.in_transaction = True
+            self.active_packet = packet
+            self.transport.write(packet + b'\r')
 
     def connection_made(self, transport):
         self.logger.debug("connected to PIM")
@@ -75,9 +109,7 @@ class UPBProtocol(asyncio.Protocol):
         if mdid_cmd == MdidCoreReport.MDID_DEVICE_CORE_REPORT_REGISTERVALUES:
             response['setup_register'] = packet[6]
             response['register_val'] = packet[7:data_len + 5]
-            for index in range(len(response['register_val'])):
-                self.logger.debug(f"Reg index: {index}, "
-                          f"value: {hex(response['register_val'][index])}")
+            self._process_received_packet(response)
         else:
             response['data'] = packet[6:data_len + 5]
         self.logger.debug(pformat(response))
@@ -95,6 +127,7 @@ class UPBProtocol(asyncio.Protocol):
                 assert(self.pulse_data_seq == 0)
                 assert(self.packet_crumb == 0)
                 self.set_state_zero()
+                self._send_next_packet()
             elif command == UpbMessage.UPB_MESSAGE_DROP:
                 self.logger.debug('dropped message')
                 self.set_state_zero()
