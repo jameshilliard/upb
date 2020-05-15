@@ -28,8 +28,8 @@ options = parser.parse_args()
 async def main():
     loop = asyncio.get_event_loop()
     client = await create_upb_connection(host=options.host, port=options.port, logger=logger, loop=loop)
-    registers = await client.get_registers(options.network, options.device)
-    logger.info(f'registers: {pformat(registers)}')
+    device = client.get_device(options.network, options.device)
+    await device.sync_registers()
     client.stop()
 
 if __name__ == '__main__':

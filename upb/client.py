@@ -1,8 +1,9 @@
 import asyncio
 import logging
+from collections import defaultdict
 from upb.protocol import UPBProtocol
 from upb.util import encode_register_request
-from upb.register import reg_decode
+from upb.device import UPBDevice
 
 class UPBClient:
 
@@ -28,6 +29,7 @@ class UPBClient:
         self.reconnect_interval = reconnect_interval
         self.disconnect_callback = disconnect_callback
         self.reconnect_callback = reconnect_callback
+        self.devices = defaultdict(dict)
 
     async def setup(self):
         """Set up the connection with automatic retry."""
@@ -36,6 +38,7 @@ class UPBClient:
                 lambda: UPBProtocol(
                     self,
                     disconnect_callback=self.handle_disconnect_callback,
+                    register_callback=self.handle_register_update,
                     loop=self.loop, logger=self.logger),
                 host=self.host,
                 port=self.port)
@@ -61,6 +64,20 @@ class UPBClient:
         if self.transport:
             self.transport.close()
 
+    def get_device(self, network_id, device_id):
+        if self.devices.get(network_id, {}).get(device_id, None) is None:
+            self.devices[network_id][device_id] = \
+                UPBDevice(self, network_id, device_id, logger=self.logger)
+        return self.devices[network_id][device_id]
+
+    def handle_register_update(self, network_id, device_id, position, data):
+        """Receive register update."""
+        if self.devices.get(network_id, {}).get(device_id, None) is None:
+            new_device = UPBDevice(self, network_id, device_id, logger=self.logger)
+            self.devices[network_id][device_id] = new_device
+        device = self.get_device(network_id, device_id)
+        device.update_registers(position, data)
+
     async def handle_disconnect_callback(self):
         """Reconnect automatically unless stopping."""
         self.is_connected = False
@@ -70,9 +87,8 @@ class UPBClient:
             self.logger.debug("Protocol disconnected...reconnecting")
             await self.setup()
 
-    async def get_registers(self, network, device, register_len=256):
+    async def update_registers(self, network, device, register_len=256):
         """Fetch registers from device."""
-        registers = bytearray()
         index = 0
         while index < register_len:
             start = index
@@ -85,9 +101,10 @@ class UPBClient:
             response = await self.protocol.send_packet(packet)
             assert(response['setup_register'] == start)
             index += len(response['register_val'])
-            registers.extend(response['register_val'])
 
-        return reg_decode(bytes(registers))
+    async def get_registers(self, network, device, register_len=256):
+        await self.update_registers(network, device, register_len)
+        return bytes(self.get_device(network, device).registers)
 
 async def create_upb_connection(port=None, host=None,
                                 disconnect_callback=None,

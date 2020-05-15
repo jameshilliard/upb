@@ -12,7 +12,8 @@ from upb.util import cksum
 
 class UPBProtocol(asyncio.Protocol):
 
-    def __init__(self, client=None, loop=None, logger=None, disconnect_callback=None):
+    def __init__(self, client=None, loop=None, logger=None, disconnect_callback=None,
+        register_callback=None):
         if loop:
             self.loop = loop
         else:
@@ -23,6 +24,7 @@ class UPBProtocol(asyncio.Protocol):
             self.logger = logging.getLogger(__name__)
         self.client = client
         self.disconnect_callback = disconnect_callback
+        self.register_callback = register_callback
         self.server_transport = None
         self.buffer = b''
         self.last_command = {}
@@ -107,8 +109,11 @@ class UPBProtocol(asyncio.Protocol):
             'mdid_cmd': mdid_cmd
         }
         if mdid_cmd == MdidCoreReport.MDID_DEVICE_CORE_REPORT_REGISTERVALUES:
-            response['setup_register'] = packet[6]
-            response['register_val'] = packet[7:data_len + 5]
+            setup_register = packet[6]
+            register_val = packet[7:data_len + 5]
+            response['setup_register'] = setup_register
+            response['register_val'] = register_val
+            self.register_callback(network_id, source_id, setup_register, register_val)
             self._process_received_packet(response)
         else:
             response['data'] = packet[6:data_len + 5]

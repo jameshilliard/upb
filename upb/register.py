@@ -1,16 +1,28 @@
 from struct import unpack
+from ctypes import BigEndianStructure, c_uint8, c_uint16, c_uint32, c_ubyte, Array
 
-def reg_decode(reg):
-	upbid = {
-		'net_id': reg[0],
-		'module_id': reg[1],
-		'password': unpack('>H', reg[2:4])[0],
-		'upb_options': reg[4],
-		'upb_version': reg[5],
-		'manufacturer_id': unpack('>H', reg[6:8])[0],
-		'product_id': unpack('>H', reg[8:10])[0],
-		'firmware_major_version': reg[10],
-		'firmware_minor_version': reg[11],
-		'serial_number': unpack('>I', reg[12:16])[0]
-	}
-	return upbid
+class UPBID(BigEndianStructure):
+    _pack_ = 1
+    _fields_ = [('net_id', c_uint8),
+                ('module_id', c_uint8),
+                ('password', c_uint16),
+                ('upb_options', c_uint8),
+                ('upb_version', c_uint8),
+                ('manufacturer_id', c_uint16),
+                ('product_id', c_uint16),
+                ('firmware_major_version', c_uint8),
+                ('firmware_minor_version', c_uint8),
+                ('serial_number', c_uint32)]
+
+    def __get_value_str(self, name, fmt='{}'):
+        val = getattr(self, name)
+        if isinstance(val, Array):
+            val = list(val)
+        return fmt.format(val)
+
+    def __repr__(self):
+        return '{name}({fields})'.format(
+                name = self.__class__.__name__,
+                fields = ', '.join(
+                    '{}={}'.format(name, self.__get_value_str(name, '{!r}')) for name, _ in self._fields_)
+                )

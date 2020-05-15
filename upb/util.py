@@ -36,3 +36,10 @@ def encode_register_request(network, device, register_start=0, registers=16):
     packet = pack('B', PimCommand.UPB_NETWORK_TRANSMIT.value)
     packet += hexlify(msg).swapcase()
     return packet
+
+def hexdump(data):
+	lines = ""
+	for seq in range(0, len(data), 16):
+		line = data[seq: seq + 16]
+		lines += ":".join("{:02x}".format(c) for c in line) + "\n"
+	return lines
