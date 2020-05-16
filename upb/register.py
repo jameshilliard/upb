@@ -1,6 +1,9 @@
 from struct import unpack
 from enum import Enum
 from ctypes import Structure, BigEndianStructure, c_uint8, c_uint16, c_uint32, c_ubyte, c_char, Array
+from collections import defaultdict
+
+from upb.memory import *
 
 class Dictionary:
     # Implement the iterator method such that dict(...) results in the correct
@@ -8,7 +11,21 @@ class Dictionary:
     def __iter__(self):
         for k, t in self._fields_:
             if (issubclass(t, Structure)):
-                yield (k, dict(getattr(self, k)))
+                for nk, nt in getattr(self, k):
+                    yield (nk, getattr(self, nk))
+            elif (issubclass(t, Array)):
+                ak = getattr(self, k)
+                al = []
+                for ai in range(len(ak)):
+                    av = ak[ai]
+                    if isinstance(av, RockerAction):
+                        nd = defaultdict(dict)
+                        for nk, nt in av._fields_:
+                            nd[nk] = getattr(av, nk)
+                        al.append(dict(nd))
+                    else:
+                        al.append(av)
+                yield (k, al)
             else:
                 yield (k, getattr(self, k))
 
@@ -32,7 +49,7 @@ class Dictionary:
     def __str__(self):
         return str(dict(self))
 
-class UPBMemory(BigEndianStructure, Dictionary):
+class UPBID(BigEndianStructure, Dictionary):
     _pack_ = 1
     _fields_ = [('net_id', c_uint8),
                 ('module_id', c_uint8),
@@ -60,3 +77,41 @@ class UPBMemory(BigEndianStructure, Dictionary):
                 fields = ', '.join(
                     '{}={}'.format(name, self.__get_value_str(name, '{!r}')) for name, _ in self._fields_)
                 )
+
+class RockerAction(BigEndianStructure):
+    _pack_ = 1
+    _fields_ = [('top_rocker_tid', c_uint8),
+                ('top_rocker_single_click', c_uint8),
+                ('top_rocker_double_click', c_uint8),
+                ('top_rocker_hold', c_uint8),
+                ('top_rocker_release', c_uint8),
+                ('bottom_rocker_tid', c_uint8),
+                ('bottom_rocker_single_click', c_uint8),
+                ('bottom_rocker_double_click', c_uint8),
+                ('bottom_rocker_hold', c_uint8),
+                ('bottom_rocker_release', c_uint8)]
+
+class UPBUS2(BigEndianStructure, Dictionary):
+    _pack_ = 1
+    _anonymous_ = ('upbid',)
+    _fields_ = [('upbid', UPBID),
+                ('link_ids', c_uint8 * 16),
+                ('preset_level_table', c_uint8 * 16),
+                ('preset_fade_table', c_uint8 * 16),
+                ('reserved1', c_char * 26),
+                ('rocker_transmit_options', c_uint8),
+                ('led_options', c_uint8),
+                ('rocker_config', c_uint8),
+                ('dim_options', c_uint8),
+                ('transmission_options', c_uint8),
+                ('rocker_options', c_uint8),
+                ('rocker_action', RockerAction * 4),
+                ('reserved2', c_char * 72)]
+
+
+def get_register_map(product):
+    if product == SAProductID.SA_US2_40:
+        return UPBUS2
+    else:
+        return None
+
