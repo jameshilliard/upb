@@ -1,5 +1,7 @@
 from upb.util import hexdump
-from upb.register import UPBID
+from upb.register import UPBMemory
+
+from pprint import pformat
 
 class UPBDevice:
 
@@ -13,11 +15,11 @@ class UPBDevice:
         self.network_id = network_id
         self.device_id = device_id
         self.registers = bytearray(256)
-        self.reg = UPBID.from_buffer(self.registers)
+        self.reg = UPBMemory.from_buffer(self.registers)
 
     def __repr__(self):
         '''Returns representation of the object'''
-        return(f"{self.__class__.__name__}(UPBID={self.reg!r})")
+        return(f"{self.__class__.__name__}(UPBMemory={self.reg!r})")
 
     @property
     def network(self):
@@ -37,4 +39,4 @@ class UPBDevice:
     def update_registers(self, pos, data):
         self.registers[pos:pos + len(data)] = data
         self.logger.debug(f"Device {self.network_id}:{self.device_id} registers: \n{hexdump(self.registers)}")
-        self.logger.debug(f"Device {self.network_id}:{self.device_id}: {repr(self)}")
+        self.logger.debug(f"Device {self.network_id}:{self.device_id}: {pformat(dict(self.reg))}")
