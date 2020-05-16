@@ -43,7 +43,15 @@ class UPBDevice:
 
     @property
     def product(self):
-        if self.manufacturer == UPBManufacturerID.SimplyAutomated:
+        if self.manufacturer == UPBManufacturerID.PCS:
+            return PCSProductID(self.upbid.product_id)
+        elif self.manufacturer == UPBManufacturerID.MDManufacturing:
+            return MDProductID(self.upbid.product_id)
+        elif self.manufacturer == UPBManufacturerID.HAI:
+            return HAIProductID(self.upbid.product_id)
+        elif self.manufacturer == UPBManufacturerID.WebMountainTech:
+            return WMTProductID(self.upbid.product_id)
+        elif self.manufacturer == UPBManufacturerID.SimplyAutomated:
             return SAProductID(self.upbid.product_id)
         else:
             return self.upbid.product_id

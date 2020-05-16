@@ -19,6 +19,152 @@ class UPBManufacturerID(Enum):
     OEM98 = 98
     OEM99 = 99
 
+class PCSProductID(Enum):
+    PCS_WS1  = 1 # Wall Switch - 1 Channel - Dimmer
+    PCS_WS1R = 2 # Wall Switch - 1 Channel - Relay
+    PCS_WMC6 = 3 # Wall Mount Controller - 6 Button
+    PCS_WMC8 = 4 # Wall Mount Controller - 8 Button
+    PCS_OCM1 = 5 # Output Control Module - 1 Channel
+    PCS_OCM2 = 6 # Output Control Module - 2 Channel
+    PCS_UNUSED_7 = 7 # Load Control Module - 1 Channel
+    PCS_LCM2 = 8 # Load Control Module - 2 Channel
+    PCS_LM1  = 9 # Lamp Module - 1 Channel
+    PCS_LM2  = 10 # Lamp Module - 2 Channel
+    PCS_ICM2 = 11 # Input Control Module - 2 Channel
+    PCS_DTC6 = 13 # Desktop Controller - 6 Button
+    PCS_DTC8 = 14 # Desktop Controller - 8 Button
+    PCS_AM1  = 15 # Appliance Module - 1 Channel
+
+    PCS_UNUSED_16 = 16 # Commercial Lighting Controller
+    PCS_UNUSED_17  = 17 # Commercial Fixture Controller
+    PCS_PRS  = 18 # Phase Repeater Slave
+    PCS_PRM  = 19 # Phase Repeater Master
+    PCS_MSC  = 20 # Motion Sensor Controller
+    PCS_HFC  = 21 # HID Fixture Controller
+    PCS_RRM  = 22 # Router Repeater Master Chip
+    PCS_RRS  = 23 # Router Repeater Slave  Chip
+    PCS_WS1E = 24 # Wall Switch - Electronic Low Voltage
+    PCS_UNUSED_25 = 25 # Load sheding module
+    PCS_TEC  = 26 # Time Clock
+    PCS_API  = 29 # Alarm Panel Interface
+    PCS_XPW  = 30 # X10 to UPB Converter
+
+    PCS_DSM  = 36 # Doorbell Sense Module
+    PCS_TSM  = 37 # Telephone Sense Module
+
+    PCS_SPR  = 40 # Split phase repeater
+    PCS_TPR  = 41 # 3-phase repeater
+
+    PCS_PIME  = 45 # Powerline Interface Module
+    PCS_PIMA  = 46 # Powerline Interface Module
+    PCS_PIP   = 47 # Powerline Interface Module
+    PCS_PIM   = 48 # Powerline Interface Module
+    PCS_DIAG1 = 49 # Diagnostics 1
+    PCS_DIAG2 = 50 # Diagnostics 2
+    PCS_DIAG3 = 51 # Diagnostics 3
+    PCS_DIAG4 = 52 # Diagnostics 4
+    PCS_TX4   = 53 # Test Transmitter 4
+    PCS_TM4   = 54 # Test Module 4
+    PCS_UTM   = 55 # UPB Test Module
+    PCS_ATM   = 56 # UPB Alpha Test Module
+    PCS_RM1   = 58 # Receptacle Module
+
+    PCS_FDM2  = 60 # Fixture Dimmer Module
+    PCS_FRM   = 61 # Inline Fixture Relay Module
+    PCS_WS2   = 62 # Wall Switch - 1 Channel - Dimmer
+    PCS_KPLD6 = 63 # Keypad Light Dimmer
+
+    PCS_SCM   = 64 # Shade control module
+
+    PCS_KPC6  = 65 # 6-key keypad
+    PCS_KPC8  = 66 # 8-key keypad
+    PCS_RFI   = 67 # RFI Interface
+    PCS_WS1X  = 68 # Wall switch
+
+    PCS_KPLD8 = 69 # Keypad Light Dimmer
+    PCS_KPLR6 = 70 # Keypad Load Relay
+    PCS_KPLR8 = 71 # Keypad Load Relay
+
+    PCS_WS1L  = 72 # WS1L Wall Switch LED/CFL Dimmer
+    PCS_KPC7  = 73 # KPC7 Controller - 7 Button
+    PCS_KPR7  = 74 # KPR7 Controller Load Relay - 7 Button
+    PCS_KPD7  = 75 # KPD7 Controller Load Dimmer - 7 Button
+
+class MDProductID(Enum):
+    MD_UNUSED_32  = 32 # Vacuum Handle Controller
+    MD_UNUSED_33  = 33 # Vacuum Power Module
+    MD_UNUSED_35  = 35 # Vacuum Input Module
+    MD_DSM  = 36 # Doorbell Sense Module
+    MD_TSM  = 37 # Telephone Sense Module
+
+class HAIProductID(Enum):
+    HAI_WS1  = 1 # Wall Switch - 1 Channel - 600W
+    HAI_WS2  = 2 # Wall Switch - 1 Channel - 1000W
+    HAI_WS9  = 6
+    HAI_WS3  = 16 # Wall Switch - 1 Channel - 600W
+    HAI_WS4  = 17 # Wall Switch - 1 Channel - 1000W
+    HAI_WS5  = 18 # Wall Switch - 1 Channel - Non-Dim
+
+    HAI_WS6  = 3 # Wall Switch - 1 Channel - 1000W
+    HAI_WS7  = 4 # Wall Switch - 1 Channel - 1500W
+    HAI_WS8  = 5 # Wall Switch - 1 Channel - 2400W
+
+    HAI_LM1  = 32 # Lamp Module
+    HAI_AM1  = 48 # Appliance Module
+
+    HAI_PIM  = 64 # Powerline Interface Module
+    HAI_SPR  = 65
+    HAI_TPR  = 66
+
+    HAI_WMC6 = 80 # Wall Mount Controller - 6 Button
+    HAI_HLCK6 = 81 # Wall Mount Controller - 6 button new model
+    HAI_WMC8 = 96 # Wall Mount Controller - 8 Button
+
+class WMTProductID(Enum):
+    WMT_Dimmer    = 1 # Dimmer Module
+    WMT_Relay     = 5 # Relay Module
+    WMT_FxtRelay  = 7 # Fixture Relay
+    WMT_ConOutlet = 8 # Controlled Outlet
+
+    WMT_RelayT    = 9 # Relay Module w/timer
+
+    WMT_WIDimmer  = 10 # Wired-in dimmer module
+
+    WMT_DimmerT   = 12 # Dimmer Module w/timer
+    WMT_FxtRelayT = 13 # Fixture Relay w/timer
+    WMT_WIDimmerT = 14 # Wired-in dimmer module w/timer
+
+    WMT_MultiBtn  = 15 # Multi-Button Controller
+
+    WMT_USM1      = 20 # Motorized Drapery Control USM1
+
+    WMT_MultiSw   = 22 # Multi-Switch
+    WMT_Quad      = 26 # Quad Output Module
+    WMT_US4       = 27 # US4
+    WMT_US1_40    = 28 # US1-40
+    WMT_US2_40    = 29 # US2-40
+
+    WMT_SerXfc    = 30 # Serial PIM
+    WMT_USBXfc    = 31 # USB PIM
+    WMT_EthXfc    = 32 # Ethernet PIM
+    WMT_Test      = 33 # Signal Quality Monitoring Unit
+
+    WMT_US1_40T   = 34 # US1-40 w/timer
+
+    WMT_ESI       = 35 # ESI
+    WMT_UCQTX     = 36 # UCQ TX only
+    WMT_InOut     = 40 # Input / Output module
+
+    WMT_RUC       = 41 # Remote PIM
+
+    WMT_USM1R     = 44 # Motorized Drapery Control USM1
+    WMT_USM2R     = 45 # Motorized Drapery Control USM1
+
+    WMT_US22_40   = 62 # US22-40
+
+    WMT_WS1       = 88 # Relabled PCS switch
+    WMT_WMC6      = 89 # Relabled PCS WMC6
+
 class SAProductID(Enum):
     SA_Dimmer    = 1 # Dimmer Module
     SA_Relay     = 5 # Relay Module
