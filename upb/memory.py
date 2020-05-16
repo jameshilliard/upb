@@ -213,3 +213,58 @@ class SAProductID(Enum):
     SA_XRelay    = 205 # Relay Module
     SA_XMultiSw  = 222 # Multi-Switch
     SA_XInOut    = 240 # Input / Output module
+
+class OEMProductID(Enum):
+    OEM_Dimmer    = 1 # Dimmer Module
+    OEM_Relay     = 5 # Relay Module
+    OEM_FxtRelay  = 7 # Fixture Relay
+
+    OEM_RelayT    = 9 # Relay Module w/timer
+    OEM_WIDimmer  = 10 # Wired-in dimmer module
+
+    OEM_DimmerT   = 12 # Dimmer Module w/timer
+    OEM_FxtRelayT = 13 # Fixture Relay w/timer
+    OEM_WIDimmerT = 14 # Wired-in dimmer module w/timer
+
+    OEM_MultiBtn  = 15 # Multi-Button Controller
+
+    OEM_USM1      = 20 # Motorized Drapery Control USM1
+
+    OEM_MultiSw   = 22 # Multi-Switch
+    OEM_Quad      = 26 # Quad Output Module
+    OEM_US4       = 27 # US4
+    OEM_US1_40    = 28 # US1-40
+    OEM_US2_40    = 29 # US2-40
+
+    OEM_SerXfc    = 30 # Serial PIM
+    OEM_USBXfc    = 31 # USB PIM
+    OEM_EthXfc    = 32 # Ethernet PIM
+    OEM_Test      = 33 # Signal Quality Monitoring Unit
+
+    OEM_US1_40T   = 34 # US1-40 w/timer
+
+    OEM_UCQTX     = 36 # UCQ TX only
+
+    OEM_InOut     = 40 # Input / Output module
+
+    OEM_USM1R     = 44 # Motorized Drapery Control USM1
+    OEM_USM2R     = 45 # Motorized Drapery Control USM1
+
+    OEM_US22_40   = 62 # US22-40
+
+    OEM_XDimmer   = 201 # Dimmer Module
+    OEM_XRelay    = 205 # Relay Module
+    OEM_XMultiSw  = 222 # Multi-Switch
+    OEM_XInOut    = 240 # Input / Output module
+
+class OEM90ProductID(Enum):
+    OEM90_Dimmer  = 201 # Dimmer Module
+    OEM90_Relay   = 205 # Relay Module
+    OEM90_MultiSw = 222 # Multi-Switch
+    OEM90_InOut   = 240 # Input / Output module
+
+class RCSProductID(Enum):
+    RCS_TU16  = 10
+    RCS_TU40  = 11
+    RCS_TU50  = 12
+    RCS_RelayUnit  = 20

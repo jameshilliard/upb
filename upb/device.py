@@ -53,6 +53,12 @@ class UPBDevice:
             return WMTProductID(self.upbid.product_id)
         elif self.manufacturer == UPBManufacturerID.SimplyAutomated:
             return SAProductID(self.upbid.product_id)
+        elif self.manufacturer == UPBManufacturerID.OEM:
+            return OEMProductID(self.upbid.product_id)
+        elif self.manufacturer == UPBManufacturerID.OEM90:
+            return OEM90ProductID(self.upbid.product_id)
+        elif self.manufacturer == UPBManufacturerID.RCS:
+            return RCSProductID(self.upbid.product_id)
         else:
             return self.upbid.product_id
 
