@@ -432,3 +432,18 @@ UPBKindFR = {
     OEMProductID.OEM_FxtRelayT,
     OEMProductID.OEM_WIDimmerT
 }
+
+UPBKindUSM1 = {
+    WMTProductID.WMT_USM1,
+    WMTProductID.WMT_USM1R,
+    SAProductID.SA_USM1,
+    SAProductID.SA_USM1R,
+    OEMProductID.OEM_USM1,
+    OEMProductID.OEM_USM1R
+}
+
+UPBKindUSM2 = {
+    WMTProductID.WMT_USM2R,
+    SAProductID.SA_USM2R,
+    OEMProductID.OEM_USM2R
+}
