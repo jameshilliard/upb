@@ -1,6 +1,7 @@
-from enum import Enum
+from enum import IntFlag, unique
 
-class UPBManufacturerID(Enum):
+@unique
+class UPBManufacturerID(IntFlag):
     OEM = 0
     PCS = 1
     MDManufacturing = 2
@@ -19,7 +20,8 @@ class UPBManufacturerID(Enum):
     OEM98 = 98
     OEM99 = 99
 
-class PCSProductID(Enum):
+@unique
+class PCSProductID(IntFlag):
     PCS_WS1  = 1 # Wall Switch - 1 Channel - Dimmer
     PCS_WS1R = 2 # Wall Switch - 1 Channel - Relay
     PCS_WMC6 = 3 # Wall Mount Controller - 6 Button
@@ -90,14 +92,16 @@ class PCSProductID(Enum):
     PCS_KPR7  = 74 # KPR7 Controller Load Relay - 7 Button
     PCS_KPD7  = 75 # KPD7 Controller Load Dimmer - 7 Button
 
-class MDProductID(Enum):
+@unique
+class MDProductID(IntFlag):
     MD_UNUSED_32  = 32 # Vacuum Handle Controller
     MD_UNUSED_33  = 33 # Vacuum Power Module
     MD_UNUSED_35  = 35 # Vacuum Input Module
     MD_DSM  = 36 # Doorbell Sense Module
     MD_TSM  = 37 # Telephone Sense Module
 
-class HAIProductID(Enum):
+@unique
+class HAIProductID(IntFlag):
     HAI_WS1  = 1 # Wall Switch - 1 Channel - 600W
     HAI_WS2  = 2 # Wall Switch - 1 Channel - 1000W
     HAI_WS9  = 6
@@ -120,7 +124,8 @@ class HAIProductID(Enum):
     HAI_HLCK6 = 81 # Wall Mount Controller - 6 button new model
     HAI_WMC8 = 96 # Wall Mount Controller - 8 Button
 
-class WMTProductID(Enum):
+@unique
+class WMTProductID(IntFlag):
     WMT_Dimmer    = 1 # Dimmer Module
     WMT_Relay     = 5 # Relay Module
     WMT_FxtRelay  = 7 # Fixture Relay
@@ -165,7 +170,8 @@ class WMTProductID(Enum):
     WMT_WS1       = 88 # Relabled PCS switch
     WMT_WMC6      = 89 # Relabled PCS WMC6
 
-class SAProductID(Enum):
+@unique
+class SAProductID(IntFlag):
     SA_Dimmer    = 1 # Dimmer Module
     SA_Relay     = 5 # Relay Module
     SA_FxtRelay  = 7 # Fixture Relay
@@ -214,7 +220,8 @@ class SAProductID(Enum):
     SA_XMultiSw  = 222 # Multi-Switch
     SA_XInOut    = 240 # Input / Output module
 
-class OEMProductID(Enum):
+@unique
+class OEMProductID(IntFlag):
     OEM_Dimmer    = 1 # Dimmer Module
     OEM_Relay     = 5 # Relay Module
     OEM_FxtRelay  = 7 # Fixture Relay
@@ -257,14 +264,35 @@ class OEMProductID(Enum):
     OEM_XMultiSw  = 222 # Multi-Switch
     OEM_XInOut    = 240 # Input / Output module
 
-class OEM90ProductID(Enum):
+@unique
+class OEM90ProductID(IntFlag):
     OEM90_Dimmer  = 201 # Dimmer Module
     OEM90_Relay   = 205 # Relay Module
     OEM90_MultiSw = 222 # Multi-Switch
     OEM90_InOut   = 240 # Input / Output module
 
-class RCSProductID(Enum):
+@unique
+class RCSProductID(IntFlag):
     RCS_TU16  = 10
     RCS_TU40  = 11
     RCS_TU50  = 12
     RCS_RelayUnit  = 20
+
+UPBKindSwitch = {
+    PCSProductID.PCS_WS1,
+    PCSProductID.PCS_WS1R,
+    PCSProductID.PCS_WS1E,
+    PCSProductID.PCS_WS2,
+    PCSProductID.PCS_WS1X,
+    PCSProductID.PCS_WS1L,
+    HAIProductID.HAI_WS1,
+    HAIProductID.HAI_WS2,
+    HAIProductID.HAI_WS3,
+    HAIProductID.HAI_WS4,
+    HAIProductID.HAI_WS5,
+    HAIProductID.HAI_WS6,
+    HAIProductID.HAI_WS7,
+    HAIProductID.HAI_WS8,
+    HAIProductID.HAI_WS9,
+    WMTProductID.WMT_WS1,
+}

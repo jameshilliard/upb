@@ -108,9 +108,46 @@ class UPBUS2(BigEndianStructure, Dictionary):
                 ('rocker_action', RockerAction * 4),
                 ('reserved2', c_char * 72)]
 
+class UPBSwitch(BigEndianStructure, Dictionary):
+    _pack_ = 1
+    _anonymous_ = ('upbid',)
+    _fields_ = [('upbid', UPBID),
+                ('link_ids', c_uint8 * 16),
+                ('preset_level_table', c_uint8 * 16),
+                ('preset_fade_table', c_uint8 * 16),
+                ('top_rocker_tid', c_uint8),
+                ('top_rocker_single_click', c_uint8),
+                ('top_rocker_double_click', c_uint8),
+                ('top_rocker_hold', c_uint8),
+                ('top_rocker_release', c_uint8),
+                ('bottom_rocker_tid', c_uint8),
+                ('bottom_rocker_single_click', c_uint8),
+                ('bottom_rocker_double_click', c_uint8),
+                ('bottom_rocker_hold', c_uint8),
+                ('bottom_rocker_release', c_uint8),
+                ('top_rocker_sc_level', c_uint8),
+                ('top_rocker_sc_rate', c_uint8),
+                ('top_rocker_dc_level', c_uint8),
+                ('top_rocker_dc_rate', c_uint8),
+                ('bottom_rocker_sc_level', c_uint8),
+                ('bottom_rocker_sc_rate', c_uint8),
+                ('bottom_rocker_dc_level', c_uint8),
+                ('bottom_rocker_dc_rate', c_uint8),
+                ('reserved1', c_char * 6),
+                ('min_dim_level', c_uint8),
+                ('auto_off_link', c_uint8),
+                ('auto_off_cmd', c_uint8),
+                ('led_options', c_uint8),
+                ('switch_options', c_uint8),
+                ('default_options', c_uint8),
+                ('transmission_options', c_uint8),
+                ('timed_options', c_uint8),
+                ('reserved2', c_char * 112)]
 
 def get_register_map(product):
-    if product == SAProductID.SA_US2_40:
+    if product in UPBKindSwitch:
+        return UPBSwitch
+    elif product == SAProductID.SA_US2_40:
         return UPBUS2
     else:
         return None
