@@ -331,3 +331,19 @@ UPBKindModule2 = {
     PCSProductID.PCS_LM2,
     PCSProductID.PCS_FDM2
 }
+
+UPBKindKeypad = {
+    PCSProductID.PCS_WMC6,
+    PCSProductID.PCS_WMC8,
+    PCSProductID.PCS_DTC6,
+    PCSProductID.PCS_DTC8,
+    PCSProductID.PCS_KPC6,
+    PCSProductID.PCS_KPC7,
+    PCSProductID.PCS_KPC8,
+    HAIProductID.HAI_WMC6,
+    HAIProductID.HAI_WMC8,
+    WMTProductID.WMT_MultiBtn,
+    WMTProductID.WMT_WMC6,
+    SAProductID.SA_MultiBtn,
+    OEMProductID.OEM_MultiBtn
+}

@@ -18,7 +18,7 @@ class Dictionary:
                 al = []
                 for ai in range(len(ak)):
                     av = ak[ai]
-                    if isinstance(av, RockerAction):
+                    if isinstance(av, (RockerAction, UPBButtonAction, UPBIndicator)):
                         nd = defaultdict(dict)
                         for nk, nt in av._fields_:
                             nd[nk] = getattr(av, nk)
@@ -192,6 +192,38 @@ class UPBModule2(BigEndianStructure, Dictionary):
                 ('auto_off_cmd_2', c_uint8),
                 ('reserved4', c_char * 56)]
 
+class UPBButtonAction(BigEndianStructure):
+    _pack_ = 1
+    _fields_ = [('link', c_uint8),
+                ('single_click', c_uint8),
+                ('double_click', c_uint8),
+                ('hold', c_uint8),
+                ('release', c_uint8)]
+
+class UPBIndicator(BigEndianStructure):
+    _pack_ = 1
+    _fields_ = [('link', c_uint8),
+                ('preset1', c_uint8),
+                ('preset2', c_uint8)]
+
+class UPBKeypad(BigEndianStructure, Dictionary):
+    _pack_ = 1
+    _anonymous_ = ('upbid',)
+    _fields_ = [('upbid', UPBID),
+                ('indicator_links', c_uint8 * 8),
+                ('button_action_table', UPBButtonAction * 8),
+                ('led_group_table', c_uint8 * 8),
+                ('reserved1', c_char * 18),
+                ('use_options', c_uint8),
+                ('reserved2', c_char),
+                ('ir_options', c_uint8),
+                ('led_options', c_uint8),
+                ('transmission_options', c_uint8),
+                ('indicator_options', c_uint8),
+                ('reserved3', c_char * 48),
+                ('indicator_table', UPBIndicator * 16),
+                ('reserved4', c_char * 16)]
+
 def get_register_map(product):
     if product in UPBKindSwitch:
         return UPBSwitch
@@ -199,6 +231,8 @@ def get_register_map(product):
         return UPBModule
     elif product in UPBKindModule2:
         return UPBModule2
+    elif product in UPBKindKeypad:
+        return UPBKeypad
     elif product == SAProductID.SA_US2_40:
         return UPBUS2
     else:
