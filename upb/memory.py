@@ -364,3 +364,18 @@ UPBKindInput = {
     MDProductID.MD_DSM,
     MDProductID.MD_TSM
 }
+
+UPBKindUSQ = {
+    WMTProductID.WMT_MultiSw,
+    WMTProductID.WMT_US1_40,
+    WMTProductID.WMT_US1_40T,
+    SAProductID.SA_MultiSw,
+    SAProductID.SA_US1_40,
+    SAProductID.SA_US1_40T,
+    SAProductID.SA_XMultiSw,
+    OEMProductID.OEM_MultiSw,
+    OEMProductID.OEM_US1_40,
+    OEMProductID.OEM_US1_40T,
+    OEMProductID.OEM_XMultiSw,
+    OEM90ProductID.OEM90_MultiSw
+}

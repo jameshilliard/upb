@@ -278,6 +278,33 @@ class UPBICM(BigEndianStructure, Dictionary):
                 ('heartbeat_period', c_uint8),
                 ('reserved4', c_char * 112)]
 
+class UPBUSQ(BigEndianStructure, Dictionary):
+    _pack_ = 1
+    _anonymous_ = ('upbid',)
+    _fields_ = [('upbid', UPBID),
+                ('link_ids', c_uint8 * 16),
+                ('preset_level_table', c_uint8 * 16),
+                ('preset_fade_table', c_uint8 * 16),
+                ('rocker1', RockerAction),
+                ('top_rocker_sc_level', c_uint8),
+                ('top_rocker_sc_rate', c_uint8),
+                ('top_rocker_dc_level', c_uint8),
+                ('top_rocker_dc_rate', c_uint8),
+                ('bottom_rocker_sc_level', c_uint8),
+                ('bottom_rocker_sc_rate', c_uint8),
+                ('bottom_rocker_dc_level', c_uint8),
+                ('bottom_rocker_dc_rate', c_uint8),
+                ('reserved2', c_char * 8),
+                ('tap_options', c_uint8),
+                ('led_options', c_uint8),
+                ('rocker_config', c_uint8),
+                ('default_options', c_uint8),
+                ('transmission_options', c_uint8),
+                ('rocker_options', c_uint8),
+                ('reserved3', c_char * 58),
+                ('rocker_2_to_4', RockerAction * 3),
+                ('reserved4', c_char * 24)]
+
 def get_register_map(product):
     if product in UPBKindSwitch:
         return UPBSwitch
@@ -291,6 +318,8 @@ def get_register_map(product):
         return UPBKeypadDimmer
     elif product in UPBKindInput:
         return UPBICM
+    elif product in UPBKindUSQ:
+        return UPBUSQ
     elif product == SAProductID.SA_US2_40:
         return UPBUS2
     else:
