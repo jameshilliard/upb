@@ -224,6 +224,29 @@ class UPBKeypad(BigEndianStructure, Dictionary):
                 ('indicator_table', UPBIndicator * 16),
                 ('reserved4', c_char * 16)]
 
+class UPBKeypadDimmer(BigEndianStructure, Dictionary):
+    _pack_ = 1
+    _anonymous_ = ('upbid',)
+    _fields_ = [('upbid', UPBID),
+                ('link_ids', c_uint8 * 16),
+                ('preset_level_table', c_uint8 * 16),
+                ('preset_fade_table', c_uint8 * 16),
+                ('indicator_table', UPBIndicator * 16),
+                ('button_action_table', UPBButtonAction * 8),
+                ('reserved1', c_char * 42),
+                ('min_dim_level', c_uint8),
+                ('use_options', c_uint8),
+                ('reserved2', c_char),
+                ('led_options', c_uint8),
+                ('dim_options', c_uint8),
+                ('chirp_options', c_uint8),
+                ('transmission_options', c_uint8),
+                ('transmission_enable', c_uint8),
+                ('auto_off_time', c_uint8),
+                ('auto_off_link', c_uint8),
+                ('auto_off_cmd', c_uint8),
+                ('reserved3', c_char * 3)]
+
 def get_register_map(product):
     if product in UPBKindSwitch:
         return UPBSwitch
@@ -233,6 +256,8 @@ def get_register_map(product):
         return UPBModule2
     elif product in UPBKindKeypad:
         return UPBKeypad
+    elif product in UPBKindKeypadDimmer:
+        return UPBKeypadDimmer
     elif product == SAProductID.SA_US2_40:
         return UPBUS2
     else:

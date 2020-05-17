@@ -347,3 +347,12 @@ UPBKindKeypad = {
     SAProductID.SA_MultiBtn,
     OEMProductID.OEM_MultiBtn
 }
+
+UPBKindKeypadDimmer = {
+    PCSProductID.PCS_KPLD6,
+    PCSProductID.PCS_KPD7,
+    PCSProductID.PCS_KPLD8,
+    PCSProductID.PCS_KPLR6,
+    PCSProductID.PCS_KPR7,
+    PCSProductID.PCS_KPLR8,
+}
