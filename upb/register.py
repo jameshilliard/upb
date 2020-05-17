@@ -18,7 +18,7 @@ class Dictionary:
                 al = []
                 for ai in range(len(ak)):
                     av = ak[ai]
-                    if isinstance(av, (RockerAction, UPBButtonAction, UPBIndicator)):
+                    if isinstance(av, (RockerAction, UPBButtonAction, UPBIndicator, UPBInput)):
                         nd = defaultdict(dict)
                         for nk, nt in av._fields_:
                             nd[nk] = getattr(av, nk)
@@ -247,6 +247,37 @@ class UPBKeypadDimmer(BigEndianStructure, Dictionary):
                 ('auto_off_cmd', c_uint8),
                 ('reserved3', c_char * 3)]
 
+class UPBInput(BigEndianStructure):
+    _pack_ = 1
+    _fields_ = [('open_link_id', c_uint8),
+                ('open_cmd_id', c_uint8),
+                ('close_link_id', c_uint8),
+                ('close_cmd_id', c_uint8)]
+
+class UPBICM(BigEndianStructure, Dictionary):
+    _pack_ = 1
+    _anonymous_ = ('upbid',)
+    _fields_ = [('upbid', UPBID),
+                ('input_control_a1', c_uint8),
+                ('input_control_b1', c_uint8),
+                ('input_control_c1', c_uint8),
+                ('input_control_d1', c_uint8),
+                ('input_control_a2', c_uint8),
+                ('input_control_b2', c_uint8),
+                ('input_control_c2', c_uint8),
+                ('input_control_d2', c_uint8),
+                ('reserved1', c_char * 8),
+                ('input', UPBInput * 2),
+                ('reserved2', c_char * 49),
+                ('transmit_timeout', c_uint8),
+                ('transmit_attempts', c_uint8),
+                ('led_options', c_uint8),
+                ('input_debounce_count', c_uint8),
+                ('reserved3', c_char),
+                ('transmission_options', c_uint8),
+                ('heartbeat_period', c_uint8),
+                ('reserved4', c_char * 112)]
+
 def get_register_map(product):
     if product in UPBKindSwitch:
         return UPBSwitch
@@ -258,6 +289,8 @@ def get_register_map(product):
         return UPBKeypad
     elif product in UPBKindKeypadDimmer:
         return UPBKeypadDimmer
+    elif product in UPBKindInput:
+        return UPBICM
     elif product == SAProductID.SA_US2_40:
         return UPBUS2
     else:

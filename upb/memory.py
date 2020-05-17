@@ -354,5 +354,13 @@ UPBKindKeypadDimmer = {
     PCSProductID.PCS_KPLD8,
     PCSProductID.PCS_KPLR6,
     PCSProductID.PCS_KPR7,
-    PCSProductID.PCS_KPLR8,
+    PCSProductID.PCS_KPLR8
+}
+
+UPBKindInput = {
+    PCSProductID.PCS_ICM2,
+    PCSProductID.PCS_DSM,
+    PCSProductID.PCS_TSM,
+    MDProductID.MD_DSM,
+    MDProductID.MD_TSM
 }
