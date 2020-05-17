@@ -379,3 +379,9 @@ UPBKindUSQ = {
     OEMProductID.OEM_XMultiSw,
     OEM90ProductID.OEM90_MultiSw
 }
+
+UPBKindUS4 = {
+    WMTProductID.WMT_US4,
+    SAProductID.SA_US4,
+    OEMProductID.OEM_US4,
+}
