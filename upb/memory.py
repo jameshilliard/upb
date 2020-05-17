@@ -294,5 +294,34 @@ UPBKindSwitch = {
     HAIProductID.HAI_WS7,
     HAIProductID.HAI_WS8,
     HAIProductID.HAI_WS9,
-    WMTProductID.WMT_WS1,
+    WMTProductID.WMT_WS1
+}
+
+UPBKindModule1 = {
+    PCSProductID.PCS_LM1,
+    PCSProductID.PCS_AM1,
+    PCSProductID.PCS_RM1,
+    PCSProductID.PCS_FRM,
+    HAIProductID.HAI_LM1,
+    HAIProductID.HAI_AM1,
+    WMTProductID.WMT_Dimmer,
+    WMTProductID.WMT_Relay,
+    WMTProductID.WMT_DimmerT,
+    WMTProductID.WMT_RelayT,
+    WMTProductID.WMT_FxtRelay,
+    WMTProductID.WMT_ConOutlet,
+    SAProductID.SA_Dimmer,
+    SAProductID.SA_Relay,
+    SAProductID.SA_DimmerT,
+    SAProductID.SA_RelayT,
+    SAProductID.SA_XDimmer,
+    SAProductID.SA_XRelay,
+    OEMProductID.OEM_Dimmer,
+    OEMProductID.OEM_Relay,
+    OEMProductID.OEM_DimmerT,
+    OEMProductID.OEM_RelayT,
+    OEMProductID.OEM_XDimmer,
+    OEMProductID.OEM_XRelay,
+    OEM90ProductID.OEM90_Dimmer,
+    OEM90ProductID.OEM90_Relay
 }

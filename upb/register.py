@@ -144,9 +144,30 @@ class UPBSwitch(BigEndianStructure, Dictionary):
                 ('timed_options', c_uint8),
                 ('reserved2', c_char * 112)]
 
+class UPBModule(BigEndianStructure, Dictionary):
+    _pack_ = 1
+    _anonymous_ = ('upbid',)
+    _fields_ = [('upbid', UPBID),
+                ('link_ids', c_uint8 * 16),
+                ('preset_level_table', c_uint8 * 16),
+                ('preset_fade_table', c_uint8 * 16),
+                ('reserved1', c_char * 23),
+                ('lts_link', c_uint8),
+                ('lts_cmd', c_uint8),
+                ('auto_off_link', c_uint8),
+                ('auto_off_cmd', c_uint8),
+                ('led_options', c_uint8),
+                ('options', c_uint8),
+                ('default_options', c_uint8),
+                ('transmission_options', c_uint8),
+                ('timed_options', c_uint8),
+                ('reserved3', c_char * 112)]
+
 def get_register_map(product):
     if product in UPBKindSwitch:
         return UPBSwitch
+    elif product in UPBKindModule1:
+        return UPBModule
     elif product == SAProductID.SA_US2_40:
         return UPBUS2
     else:
