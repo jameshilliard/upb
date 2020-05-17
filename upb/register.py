@@ -362,6 +362,37 @@ class UPBUS2(BigEndianStructure, Dictionary):
                 ('rocker_action', RockerAction * 4),
                 ('reserved2', c_char * 72)]
 
+class UPBUFQ(BigEndianStructure, Dictionary):
+    _pack_ = 1
+    _anonymous_ = ('upbid',)
+    _fields_ = [('upbid', UPBID),
+                ('button_action_table', UPBButtonAction * 4),
+                ('reserved1', c_char * 55),
+                ('led_options', c_uint8),
+                ('reserved2', c_char * 2),
+                ('transmission_options', c_uint8),
+                ('reserved3', c_char),
+                ('link_ids_1', c_uint8 * 8),
+                ('preset_level_table_1', c_uint8 * 8),
+                ('preset_fade_table_1', c_uint8 * 8),
+                ('link_ids_2', c_uint8 * 8),
+                ('preset_level_table_2', c_uint8 * 8),
+                ('preset_fade_table_2', c_uint8 * 8),
+                ('link_ids_3', c_uint8 * 8),
+                ('preset_level_table_3', c_uint8 * 8),
+                ('preset_fade_table_3', c_uint8 * 8),
+                ('link_ids_4', c_uint8 * 8),
+                ('preset_level_table_4', c_uint8 * 8),
+                ('preset_fade_table_4', c_uint8 * 8),
+                ('reserved4', c_char * 2),
+                ('timeout_enables', c_uint8),
+                ('timeout_1', c_uint8),
+                ('timeout_2', c_uint8),
+                ('timeout_3', c_uint8),
+                ('timeout_4', c_uint8),
+                ('variant_options', c_uint8),
+                ('reserved5', c_char * 8)]
+
 def get_register_map(product):
     if product in UPBKindSwitch:
         return UPBSwitch
@@ -383,6 +414,8 @@ def get_register_map(product):
         return UPBUS22
     elif product in UPBKindUS2:
         return UPBUS2
+    elif product in UPBKindUFQ:
+        return UPBUFQ
     else:
         return None
 

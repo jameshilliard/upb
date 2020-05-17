@@ -397,3 +397,15 @@ UPBKindUS2 = {
     SAProductID.SA_US2_40,
     OEMProductID.OEM_US2_40
 }
+
+UPBKindUFQ = {
+    WMTProductID.WMT_Quad,
+    WMTProductID.WMT_UCQTX,
+    SAProductID.SA_Quad,
+    SAProductID.SA_UCQTX,
+    SAProductID.SA_UCQ,
+    SAProductID.SA_UCQ_40,
+    SAProductID.SA_UCQ_F,
+    OEMProductID.OEM_Quad,
+    OEMProductID.OEM_UCQTX
+}
