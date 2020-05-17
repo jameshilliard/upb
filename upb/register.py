@@ -18,7 +18,7 @@ class Dictionary:
                 al = []
                 for ai in range(len(ak)):
                     av = ak[ai]
-                    if isinstance(av, (RockerAction, UPBButtonAction, UPBIndicator, UPBInput, IOMInput)):
+                    if isinstance(av, (RockerAction, UPBButtonAction, UPBIndicator, UPBInput, IOMInput, TimedEvent, ESIComponent)):
                         nd = defaultdict(dict)
                         for nk, nt in av._fields_:
                             nd[nk] = getattr(av, nk)
@@ -473,6 +473,98 @@ class UPBUSM(BigEndianStructure, Dictionary):
                 ('preset_fade_table_2', c_uint8 * 8),
                 ('reserved4', c_char * 64)]
 
+class DSTDate(BigEndianStructure):
+    _pack_ = 1
+    _fields_ = [('start_month', c_uint8),
+                ('start_day', c_uint8),
+                ('end_month', c_uint8),
+                ('end_day', c_uint8)]
+
+class TECFlash(BigEndianStructure):
+    _pack_ = 1
+    _fields_ = [('clock', c_uint8 * 8),
+                ('jan_1_sunrise_hours', c_uint8),
+                ('jan_1_sunrise_minutes', c_uint8),
+                ('jan_1_sunset_hours', c_uint8),
+                ('jan_1_sunset_minutes', c_uint8),
+                ('dst_start_month', c_uint8),
+                ('dst_start_day', c_uint8),
+                ('dst_stop_month', c_uint8),
+                ('dst_stop_day', c_uint8),
+                ('suntime_table', c_uint8 * 366),
+                ('dst_table', DSTDate * 30)]
+
+class TimedEvent(BigEndianStructure):
+    _pack_ = 1
+    _fields_ = [('time1', c_uint8),
+                ('time2', c_uint8),
+                ('minute', c_uint8),
+                ('vary', c_uint8),
+                ('transmit_link', c_uint8),
+                ('transmit_cmd', c_uint8),
+                ('receive_link', c_uint8),
+                ('receive_level', c_uint8)]
+
+class UPBTEC(BigEndianStructure, Dictionary):
+    _pack_ = 1
+    _anonymous_ = ('upbid',)
+    _fields_ = [('upbid', UPBID),
+                ('led_options', c_uint8),
+                ('transmission_options', c_uint8),
+                ('reserved1', c_char * 5),
+                ('ct_events_in_use', c_uint8),
+                ('event_table', TimedEvent * 20),
+                ('reserved2', c_char * 24)]
+
+class ESIComponent(BigEndianStructure):
+    _pack_ = 1
+    _fields_ = [('link_id', c_uint8),
+                ('cm_msg', c_uint8),
+                ('msg', c_uint8 * 7)]
+
+class UPBESI(BigEndianStructure, Dictionary):
+    _pack_ = 1
+    _anonymous_ = ('upbid',)
+    _fields_ = [('upbid', UPBID),
+                ('rct', ESIComponent * 16),
+                ('reserved1', c_char * 16),
+                ('transmission_options', c_uint8),
+                ('led_options', c_uint8),
+                ('reserved2', c_char * 30)]
+
+class UPBAPI(BigEndianStructure, Dictionary):
+    _pack_ = 1
+    _anonymous_ = ('upbid',)
+    _fields_ = [('upbid', UPBID),
+                ('house_code_map', c_uint8 * 16),
+                ('command_map', c_uint8 * 16),
+                ('reserved1', c_char * 46),
+                ('transmission_options', c_uint8),
+                ('reserved2', c_char * 113)]
+
+class UPBRFI(BigEndianStructure, Dictionary):
+    _pack_ = 1
+    _anonymous_ = ('upbid',)
+    _fields_ = [('upbid', UPBID),
+                ('link_id', c_uint8 * 32),
+                ('scdc', c_uint8 * 32),
+                ('hold_release', c_uint8 * 32),
+                ('remote_type', c_uint8 * 32),
+                ('name_update', c_uint8),
+                ('reserved1', c_char * 2),
+                ('led_options', c_uint8),
+                ('reserved2', c_char * 2),
+                ('transmission_options', c_uint8),
+                ('reserved3', c_char * 49),
+                ('remote_1_id', c_uint8 * 4),
+                ('remote_2_id', c_uint8 * 4),
+                ('remote_3_id', c_uint8 * 4),
+                ('remote_4_id', c_uint8 * 4),
+                ('remote_5_id', c_uint8 * 4),
+                ('remote_6_id', c_uint8 * 4),
+                ('remote_7_id', c_uint8 * 4),
+                ('remote_8_id', c_uint8 * 4)]
+
 def get_register_map(product):
     if product in UPBKindSwitch:
         return UPBSwitch
@@ -504,6 +596,14 @@ def get_register_map(product):
         return UPBUSM
     elif product in UPBKindUSM2:
         return UPBUSM
+    elif product in UPBKindTEC:
+        return UPBTEC
+    elif product in UPBKindESI:
+        return UPBESI
+    elif product in UPBKindAPI:
+        return UPBAPI
+    elif product in UPBKindRFI:
+        return UPBRFI
     else:
         return None
 

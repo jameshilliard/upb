@@ -447,3 +447,20 @@ UPBKindUSM2 = {
     SAProductID.SA_USM2R,
     OEMProductID.OEM_USM2R
 }
+
+UPBKindTEC = {
+    PCSProductID.PCS_TEC
+}
+
+UPBKindESI = {
+    WMTProductID.WMT_ESI
+}
+
+UPBKindAPI = {
+    PCSProductID.PCS_API,
+    PCSProductID.PCS_XPW
+}
+
+UPBKindRFI = {
+    PCSProductID.PCS_RFI
+}
