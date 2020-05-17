@@ -3,7 +3,7 @@ from setuptools import setup
 
 setup(
     name='upb',
-    version='0.0.2',
+    version='0.0.3',
     packages=['upb', 'upb.tools'],
     install_requires=['pyserial-asyncio>=0.4.0'],
     exclude_package_data={'': ['test']},
