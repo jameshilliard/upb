@@ -325,3 +325,9 @@ UPBKindModule1 = {
     OEM90ProductID.OEM90_Dimmer,
     OEM90ProductID.OEM90_Relay
 }
+
+UPBKindModule2 = {
+    PCSProductID.PCS_OCM2,
+    PCSProductID.PCS_LM2,
+    PCSProductID.PCS_FDM2
+}

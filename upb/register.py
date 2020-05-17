@@ -163,11 +163,42 @@ class UPBModule(BigEndianStructure, Dictionary):
                 ('timed_options', c_uint8),
                 ('reserved3', c_char * 112)]
 
+class UPBModule2(BigEndianStructure, Dictionary):
+    _pack_ = 1
+    _anonymous_ = ('upbid',)
+    _fields_ = [('upbid', UPBID),
+                ('link_ids_1', c_uint8 * 16),
+                ('preset_level_table_1', c_uint8 * 16),
+                ('preset_fade_table_1', c_uint8 * 16),
+                ('link_ids_2', c_uint8 * 16),
+                ('preset_level_table_2', c_uint8 * 16),
+                ('preset_fade_table_2', c_uint8 * 16),
+                ('default_options', c_uint8),
+                ('transmission_options', c_uint8),
+                ('led_options', c_uint8),
+                ('options', c_uint8),
+                ('transmit_link', c_uint8),
+                ('transmit_cmd', c_uint8),
+                ('transmit_link_2', c_uint8),
+                ('transmit_cmd_2', c_uint8),
+                ('reserved2', c_char * 24),
+                ('timed_options_1', c_uint8),
+                ('timed_options_2', c_uint8),
+                ('timed_options_3', c_uint8),
+                ('timed_options_4', c_uint8),
+                ('auto_off_link_1', c_uint8),
+                ('auto_off_cmd_1', c_uint8),
+                ('auto_off_link_2', c_uint8),
+                ('auto_off_cmd_2', c_uint8),
+                ('reserved4', c_char * 56)]
+
 def get_register_map(product):
     if product in UPBKindSwitch:
         return UPBSwitch
     elif product in UPBKindModule1:
         return UPBModule
+    elif product in UPBKindModule2:
+        return UPBModule2
     elif product == SAProductID.SA_US2_40:
         return UPBUS2
     else:
