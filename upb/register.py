@@ -337,6 +337,31 @@ class UPBUS4(BigEndianStructure, Dictionary):
                 ('preset_fade_table_4', c_uint8 * 8),
                 ('reserved3', c_char * 10)]
 
+class UPBUS22(BigEndianStructure, Dictionary):
+    _pack_ = 1
+    _anonymous_ = ('upbid',)
+    _fields_ = [('upbid', UPBID),
+                ('reserved1', c_char * 32),
+                ('rockers', RockerAction * 4),
+                ('dim_options_1', c_uint8),
+                ('dim_options_2', c_uint8),
+                ('reserved2', c_char * 2),
+                ('led_options', c_uint8),
+                ('button_config', c_uint8),
+                ('transmission_options', c_uint8),
+                ('variant_options', c_uint8),
+                ('misc_options', c_uint8),
+                ('button_transmit_options', c_uint8),
+                ('output_options', c_uint8),
+                ('reserved3', c_char * 3),
+                ('link_ids_1', c_uint8 * 16),
+                ('preset_level_table_1', c_uint8 * 16),
+                ('preset_fade_table_1', c_uint8 * 16),
+                ('link_ids_2', c_uint8 * 16),
+                ('preset_level_table_2', c_uint8 * 16),
+                ('preset_fade_table_2', c_uint8 * 16),
+                ('reserved4', c_char * 10)]
+
 def get_register_map(product):
     if product in UPBKindSwitch:
         return UPBSwitch
@@ -354,6 +379,8 @@ def get_register_map(product):
         return UPBUSQ
     elif product in UPBKindUS4:
         return UPBUS4
+    elif product in UPBKindUS22:
+        return UPBUS22
     elif product == SAProductID.SA_US2_40:
         return UPBUS2
     else:

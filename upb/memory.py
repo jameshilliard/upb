@@ -383,5 +383,11 @@ UPBKindUSQ = {
 UPBKindUS4 = {
     WMTProductID.WMT_US4,
     SAProductID.SA_US4,
-    OEMProductID.OEM_US4,
+    OEMProductID.OEM_US4
+}
+
+UPBKindUS22 = {
+    WMTProductID.WMT_US22_40,
+    SAProductID.SA_US22_40,
+    OEMProductID.OEM_US22_40
 }
