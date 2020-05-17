@@ -409,3 +409,12 @@ UPBKindUFQ = {
     OEMProductID.OEM_Quad,
     OEMProductID.OEM_UCQTX
 }
+
+UPBKindIOM = {
+    WMTProductID.WMT_InOut,
+    SAProductID.SA_InOut,
+    SAProductID.SA_XInOut,
+    OEMProductID.OEM_InOut,
+    OEMProductID.OEM_XInOut,
+    OEM90ProductID.OEM90_InOut
+}

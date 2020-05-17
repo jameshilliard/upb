@@ -18,7 +18,7 @@ class Dictionary:
                 al = []
                 for ai in range(len(ak)):
                     av = ak[ai]
-                    if isinstance(av, (RockerAction, UPBButtonAction, UPBIndicator, UPBInput)):
+                    if isinstance(av, (RockerAction, UPBButtonAction, UPBIndicator, UPBInput, IOMInput)):
                         nd = defaultdict(dict)
                         for nk, nt in av._fields_:
                             nd[nk] = getattr(av, nk)
@@ -393,6 +393,35 @@ class UPBUFQ(BigEndianStructure, Dictionary):
                 ('variant_options', c_uint8),
                 ('reserved5', c_char * 8)]
 
+class IOMInput(BigEndianStructure):
+    _pack_ = 1
+    _fields_ = [('close_link_id', c_uint8),
+                ('close_cmd', c_uint8),
+                ('close_b1', c_uint8),
+                ('close_b2', c_uint8),
+                ('open_link_id', c_uint8),
+                ('open_cmd', c_uint8),
+                ('open_b1', c_uint8),
+                ('open_b2', c_uint8)]
+
+class UPBIOM(BigEndianStructure, Dictionary):
+    _pack_ = 1
+    _anonymous_ = ('upbid',)
+    _fields_ = [('upbid', UPBID),
+                ('link_ids_1', c_uint8 * 16),
+                ('state_1', c_uint8 * 16),
+                ('unused_1', c_uint8 * 16),
+                ('link_ids_2', c_uint8 * 16),
+                ('state_2', c_uint8 * 16),
+                ('unused_2', c_uint8 * 16),
+                ('input', IOMInput * 3),
+                ('reserved1', c_char * 8),
+                ('transmission_options', c_uint8),
+                ('led_options', c_uint8),
+                ('reserved2', c_char),
+                ('device_options', c_uint8),
+                ('reserved3', c_char * 60)]
+
 def get_register_map(product):
     if product in UPBKindSwitch:
         return UPBSwitch
@@ -416,6 +445,8 @@ def get_register_map(product):
         return UPBUS2
     elif product in UPBKindUFQ:
         return UPBUFQ
+    elif product in UPBKindIOM:
+        return UPBIOM
     else:
         return None
 
