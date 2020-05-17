@@ -10,24 +10,25 @@ class Dictionary:
     # dictionary.
     def __iter__(self):
         for k, t in self._fields_:
-            if (issubclass(t, Structure)):
-                for nk, nt in getattr(self, k):
-                    yield (nk, getattr(self, nk))
-            elif (issubclass(t, Array)):
-                ak = getattr(self, k)
-                al = []
-                for ai in range(len(ak)):
-                    av = ak[ai]
-                    if isinstance(av, (RockerAction, UPBButtonAction, UPBIndicator, UPBInput, IOMInput, TimedEvent, ESIComponent)):
-                        nd = defaultdict(dict)
-                        for nk, nt in av._fields_:
-                            nd[nk] = getattr(av, nk)
-                        al.append(dict(nd))
-                    else:
-                        al.append(av)
-                yield (k, al)
-            else:
-                yield (k, getattr(self, k))
+            if k not in {'reserved1', 'reserved2', 'reserved3', 'reserved4', 'reserved5'}:
+                if (issubclass(t, Structure)):
+                    for nk, nt in getattr(self, k):
+                        yield (nk, getattr(self, nk))
+                elif (issubclass(t, Array)):
+                    ak = getattr(self, k)
+                    al = []
+                    for ai in range(len(ak)):
+                        av = ak[ai]
+                        if isinstance(av, (RockerAction, UPBButtonAction, UPBIndicator, UPBInput, IOMInput, TimedEvent, ESIComponent)):
+                            nd = defaultdict(dict)
+                            for nk, nt in av._fields_:
+                                nd[nk] = getattr(av, nk)
+                            al.append(dict(nd))
+                        else:
+                            al.append(av)
+                    yield (k, al)
+                else:
+                    yield (k, getattr(self, k))
 
     # Implement the reverse method, with some special handling for dict's and
     # lists.
