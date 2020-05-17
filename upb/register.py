@@ -422,6 +422,31 @@ class UPBIOM(BigEndianStructure, Dictionary):
                 ('device_options', c_uint8),
                 ('reserved3', c_char * 60)]
 
+class UPBFR(BigEndianStructure, Dictionary):
+    _pack_ = 1
+    _anonymous_ = ('upbid',)
+    _fields_ = [('upbid', UPBID),
+                ('link_ids', c_uint8 * 16),
+                ('preset_level_table', c_uint8 * 16),
+                ('preset_fade_table', c_uint8 * 16),
+                ('rocker', RockerAction),
+                ('top_rocker_sc_level', c_uint8),
+                ('top_rocker_sc_rate', c_uint8),
+                ('top_rocker_dc_level', c_uint8),
+                ('top_rocker_dc_rate', c_uint8),
+                ('bottom_rocker_sc_level', c_uint8),
+                ('bottom_rocker_sc_rate', c_uint8),
+                ('bottom_rocker_dc_level', c_uint8),
+                ('bottom_rocker_dc_rate', c_uint8),
+                ('reserved1', c_char * 8),
+                ('tap_options', c_uint8),
+                ('led_options', c_uint8),
+                ('reserved2', c_char),
+                ('output_options', c_uint8),
+                ('transmission_options', c_uint8),
+                ('rocker_options', c_uint8),
+                ('reserved3', c_char * 112)]
+
 def get_register_map(product):
     if product in UPBKindSwitch:
         return UPBSwitch
@@ -447,6 +472,8 @@ def get_register_map(product):
         return UPBUFQ
     elif product in UPBKindIOM:
         return UPBIOM
+    elif product in UPBKindFR:
+        return UPBFR
     else:
         return None
 

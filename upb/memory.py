@@ -418,3 +418,17 @@ UPBKindIOM = {
     OEMProductID.OEM_XInOut,
     OEM90ProductID.OEM90_InOut
 }
+
+UPBKindFR = {
+    WMTProductID.WMT_FxtRelayT,
+    WMTProductID.WMT_WIDimmer,
+    WMTProductID.WMT_WIDimmerT,
+    SAProductID.SA_FxtRelay,
+    SAProductID.SA_FxtRelayT,
+    SAProductID.SA_WIDimmer,
+    SAProductID.SA_WIDimmerT,
+    OEMProductID.OEM_FxtRelay,
+    OEMProductID.OEM_WIDimmer,
+    OEMProductID.OEM_FxtRelayT,
+    OEMProductID.OEM_WIDimmerT
+}
