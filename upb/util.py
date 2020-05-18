@@ -6,7 +6,7 @@ from upb.const import UpbDeviceId, UpbReqRepeater, UpbReqAck, MdidSet, MdidCoreC
 
 
 def cksum(data):
-	return (256 - reduce(lambda x, y: x + y, data)) % 256
+    return (256 - reduce(lambda x, y: x + y, data)) % 256
 
 def encode_register_request(network, device, register_start=0, registers=16):
     """Encode a message for the PIM"""
@@ -65,11 +65,11 @@ def encode_signature_request(network, device):
     return packet
 
 def hexdump(data, length=None):
-	if length is not None:
-		lines = ""
-		for seq in range(0, len(data), 16):
-			line = data[seq: seq + 16]
-			lines += ":".join("{:02x}".format(c) for c in line) + "\n"
-	else:
-		lines = ":".join("{:02x}".format(c) for c in data)
-	return lines
+    if length is not None:
+        lines = ""
+        for seq in range(0, len(data), 16):
+            line = data[seq: seq + 16]
+            lines += ":".join("{:02x}".format(c) for c in line) + "\n"
+    else:
+        lines = ":".join("{:02x}".format(c) for c in data)
+    return lines

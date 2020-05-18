@@ -2,7 +2,7 @@ import asyncio
 import logging
 from collections import defaultdict
 from upb.protocol import UPBProtocol
-from upb.util import encode_register_request, encode_signature_request
+from upb.util import cksum, encode_register_request, encode_signature_request
 from upb.device import UPBDevice
 
 class UPBClient:
@@ -76,10 +76,10 @@ class UPBClient:
         device = self.get_device(network_id, device_id)
         device.update_registers(position, data)
 
-    def handle_signature_update(self, network_id, device_id, data):
+    def handle_signature_update(self, network_id, device_id, id_checksum, setup_checksum, ct_bytes):
         """Receive register signature update."""
         device = self.get_device(network_id, device_id)
-        device.update_signature(data)
+        device.update_signature(id_checksum, setup_checksum, ct_bytes)
 
     async def handle_disconnect_callback(self):
         """Reconnect automatically unless stopping."""
@@ -94,15 +94,17 @@ class UPBClient:
         """Fetch register signature from device."""
         packet = encode_signature_request(network, device)
         response = await self.protocol.send_packet(packet)
-        return response['signature']
+        return response['id_checksum'], response['setup_checksum'], response['ct_bytes']
 
-    async def update_registers(self, network, device, register_len=256):
+    async def update_registers(self, network, device):
         """Fetch registers from device."""
         index = 0
-        signature = await self.update_signature(network, device)
-        while index < register_len:
+        upbid_crc = 0
+        setup_crc = 0
+        id_checksum, setup_checksum, ct_bytes = await self.update_signature(network, device)
+        while index < ct_bytes:
             start = index
-            remaining = register_len - index
+            remaining = ct_bytes - index
             if remaining >= 16:
                 req_len = 16
             else:
@@ -111,9 +113,17 @@ class UPBClient:
             response = await self.protocol.send_packet(packet)
             assert(response['setup_register'] == start)
             index += len(response['register_val'])
+            upbid_crc = sum(self.get_device(network, device).registers[0:64])
+            setup_crc = sum(self.get_device(network, device).registers[0:ct_bytes])
+            self.logger.debug(f"id_checksum: {id_checksum}, setup_checksum: {setup_checksum}, upbid_crc: {upbid_crc}, setup_crc: {setup_crc}")
+        upbid_diff = id_checksum - upbid_crc
+        setup_diff = setup_checksum - setup_crc
+        assert(upbid_diff == setup_diff)
+        if upbid_diff != 0:
+            self.logger.info(f"password diff = {upbid_diff}")
 
-    async def get_registers(self, network, device, register_len=256):
-        await self.update_registers(network, device, register_len)
+    async def get_registers(self, network, device):
+        await self.update_registers(network, device)
         return bytes(self.get_device(network, device).registers)
 
 async def create_upb_connection(port=None, host=None,

@@ -17,7 +17,14 @@ class UPBDevice:
         self.device_id = device_id
         self.registers = bytearray(256)
         self.signature = b''
+        self.id_checksum = None
+        self.setup_checksum = None
+        self.ct_bytes = None
         self.upbid = UPBID.from_buffer(self.registers)
+        self.upbid.net_id = network_id
+        self.upbid.module_id = device_id
+        self.logger.debug(f"Device {self.network_id}:{self.device_id} registers: \n{hexdump(self.registers, 16)}")
+        self.logger.debug(f"Device {self.network_id}:{self.device_id}: {pformat(dict(self.reg))}")
 
     def __repr__(self):
         '''Returns representation of the object'''
@@ -76,6 +83,7 @@ class UPBDevice:
         self.logger.debug(f"Device {self.network_id}:{self.device_id}: {pformat(dict(self.reg))}")
         self.logger.debug(f"manufacturer = {self.manufacturer.name}, product = {self.product.name}")
 
-    def update_signature(self, data):
-        self.signature = data
-        self.logger.debug(f"Device {self.network_id}:{self.device_id} signature: {hexdump(self.signature)}")
+    def update_signature(self, id_checksum, setup_checksum, ct_bytes):
+        self.id_checksum = id_checksum
+        self.setup_checksum = setup_checksum
+        self.logger.debug(f"Device {self.network_id}:{self.device_id} id_checksum: {id_checksum}, setup_checksum: {setup_checksum}")

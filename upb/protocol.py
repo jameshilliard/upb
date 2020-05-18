@@ -3,6 +3,7 @@ import logging
 from pprint import pformat
 from binascii import unhexlify
 from collections import deque
+from struct import unpack
 
 from upb.const import UpbMessage, UpbTransmission, \
     MdidSet, MdidCoreCmd, MdidDeviceControlCmd, MdidCoreReport, \
@@ -118,8 +119,23 @@ class UPBProtocol(asyncio.Protocol):
             self._process_received_packet(response)
         elif mdid_cmd == MdidCoreReport.MDID_DEVICE_CORE_REPORT_DEVICESIGNATURE:
             signature = packet[6:data_len + 5]
-            response['signature'] = signature
-            self.signature_callback(network_id, source_id, signature)
+            random_number = unpack('>H', packet[6:8])[0]
+            device_signal = packet[8]
+            device_noise = packet[9]
+            id_checksum = unpack('>H', packet[10:12])[0]
+            setup_checksum = unpack('>H', packet[12:14])[0]
+            ct_bytes = packet[14]
+            if ct_bytes == 0:
+                ct_bytes = 256
+            diagnostic = packet[15:23]
+            response['random_number'] = random_number
+            response['device_signal'] = device_signal
+            response['device_noise'] = device_noise
+            response['id_checksum'] = id_checksum
+            response['setup_checksum'] = setup_checksum
+            response['ct_bytes'] = ct_bytes
+            response['diagnostic'] = diagnostic
+            self.signature_callback(network_id, source_id, id_checksum, setup_checksum, ct_bytes)
             self._process_received_packet(response)
         else:
             response['data'] = packet[6:data_len + 5]
