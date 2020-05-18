@@ -16,6 +16,7 @@ class UPBDevice:
         self.network_id = network_id
         self.device_id = device_id
         self.registers = bytearray(256)
+        self.signature = b''
         self.upbid = UPBID.from_buffer(self.registers)
 
     def __repr__(self):
@@ -71,6 +72,10 @@ class UPBDevice:
 
     def update_registers(self, pos, data):
         self.registers[pos:pos + len(data)] = data
-        self.logger.debug(f"Device {self.network_id}:{self.device_id} registers: \n{hexdump(self.registers)}")
+        self.logger.debug(f"Device {self.network_id}:{self.device_id} registers: \n{hexdump(self.registers, 16)}")
         self.logger.debug(f"Device {self.network_id}:{self.device_id}: {pformat(dict(self.reg))}")
         self.logger.debug(f"manufacturer = {self.manufacturer.name}, product = {self.product.name}")
+
+    def update_signature(self, data):
+        self.signature = data
+        self.logger.debug(f"Device {self.network_id}:{self.device_id} signature: {hexdump(self.signature)}")

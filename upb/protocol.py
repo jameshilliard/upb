@@ -7,13 +7,13 @@ from collections import deque
 from upb.const import UpbMessage, UpbTransmission, \
     MdidSet, MdidCoreCmd, MdidDeviceControlCmd, MdidCoreReport, \
     UPB_MESSAGE_TYPE, UPB_MESSAGE_PIMREPORT_TYPE, INITIAL_PIM_REG_QUERY_BASE
-from upb.util import cksum
+from upb.util import cksum, hexdump
 
 
 class UPBProtocol(asyncio.Protocol):
 
     def __init__(self, client=None, loop=None, logger=None, disconnect_callback=None,
-        register_callback=None):
+        register_callback=None, signature_callback = None):
         if loop:
             self.loop = loop
         else:
@@ -25,6 +25,7 @@ class UPBProtocol(asyncio.Protocol):
         self.client = client
         self.disconnect_callback = disconnect_callback
         self.register_callback = register_callback
+        self.signature_callback = signature_callback
         self.server_transport = None
         self.buffer = b''
         self.last_command = {}
@@ -114,6 +115,11 @@ class UPBProtocol(asyncio.Protocol):
             response['setup_register'] = setup_register
             response['register_val'] = register_val
             self.register_callback(network_id, source_id, setup_register, register_val)
+            self._process_received_packet(response)
+        elif mdid_cmd == MdidCoreReport.MDID_DEVICE_CORE_REPORT_DEVICESIGNATURE:
+            signature = packet[6:data_len + 5]
+            response['signature'] = signature
+            self.signature_callback(network_id, source_id, signature)
             self._process_received_packet(response)
         else:
             response['data'] = packet[6:data_len + 5]
@@ -219,9 +225,9 @@ class UPBProtocol(asyncio.Protocol):
                     if len(self.message_buffer) != 0:
                         self.process_packet(self.message_buffer)
                 if self.transmitted and len(self.message_buffer) != 0:
-                    self.logger.debug(f"Got upb pim message data: {self.message_buffer}")
+                    self.logger.debug(f"Got upb pim message data: {hexdump(self.message_buffer)}")
                 elif len(self.message_buffer) != 0:
-                    self.logger.debug(f"Got upb message data: {self.message_buffer}")
+                    self.logger.debug(f"Got upb message data: {hexdump(self.message_buffer)}")
                 if len(self.message_buffer) != 0:
                     if self.last_command.get('mdid_cmd', None) == MdidCoreCmd.MDID_CORE_COMMAND_GETDEVICESIGNATURE:
                         self.logger.debug(f"Decoding signature with length {len(self.message_buffer)}")
@@ -232,7 +238,7 @@ class UPBProtocol(asyncio.Protocol):
                 if self.packet_byte > 0:
                     self.set_state_zero()
         else:
-            self.logger.debug(f'PIM failed to parse line: {line}')
+            self.logger.debug(f'PIM failed to parse line: {hexdump(line)}')
 
     def data_received(self, data):
         self.buffer += data

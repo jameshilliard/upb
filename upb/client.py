@@ -2,7 +2,7 @@ import asyncio
 import logging
 from collections import defaultdict
 from upb.protocol import UPBProtocol
-from upb.util import encode_register_request
+from upb.util import encode_register_request, encode_signature_request
 from upb.device import UPBDevice
 
 class UPBClient:
@@ -39,6 +39,7 @@ class UPBClient:
                     self,
                     disconnect_callback=self.handle_disconnect_callback,
                     register_callback=self.handle_register_update,
+                    signature_callback=self.handle_signature_update,
                     loop=self.loop, logger=self.logger),
                 host=self.host,
                 port=self.port)
@@ -72,11 +73,13 @@ class UPBClient:
 
     def handle_register_update(self, network_id, device_id, position, data):
         """Receive register update."""
-        if self.devices.get(network_id, {}).get(device_id, None) is None:
-            new_device = UPBDevice(self, network_id, device_id, logger=self.logger)
-            self.devices[network_id][device_id] = new_device
         device = self.get_device(network_id, device_id)
         device.update_registers(position, data)
+
+    def handle_signature_update(self, network_id, device_id, data):
+        """Receive register signature update."""
+        device = self.get_device(network_id, device_id)
+        device.update_signature(data)
 
     async def handle_disconnect_callback(self):
         """Reconnect automatically unless stopping."""
@@ -87,9 +90,16 @@ class UPBClient:
             self.logger.debug("Protocol disconnected...reconnecting")
             await self.setup()
 
+    async def update_signature(self, network, device):
+        """Fetch register signature from device."""
+        packet = encode_signature_request(network, device)
+        response = await self.protocol.send_packet(packet)
+        return response['signature']
+
     async def update_registers(self, network, device, register_len=256):
         """Fetch registers from device."""
         index = 0
+        signature = await self.update_signature(network, device)
         while index < register_len:
             start = index
             remaining = register_len - index

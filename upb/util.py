@@ -37,9 +37,39 @@ def encode_register_request(network, device, register_start=0, registers=16):
     packet += hexlify(msg).swapcase()
     return packet
 
-def hexdump(data):
-	lines = ""
-	for seq in range(0, len(data), 16):
-		line = data[seq: seq + 16]
-		lines += ":".join("{:02x}".format(c) for c in line) + "\n"
+def encode_signature_request(network, device):
+    """Encode a message for the PIM"""
+    cnt = 0
+    seq = 0
+    link = False
+    data_len = 7
+    network_id = network
+    destination_id = device
+    device_id = UpbDeviceId.DEFAULT_DEVICEID.value
+    link_bit = (1 if link else 0) << 7
+    repeater_request = UpbReqRepeater.REP_NONREPEATER.value << 5
+    ack_request = UpbReqAck.REQ_ACKNOREQUEUEONNAK.value << 4
+    transmit_cnt = cnt << 2
+    transmit_seq = seq
+    control_word = pack('BB', *[data_len | link_bit | repeater_request, ack_request | transmit_cnt | transmit_seq])
+    mdid_set = MdidSet.MDID_CORE_COMMANDS.value
+    mdid_cmd = MdidCoreCmd.MDID_CORE_COMMAND_GETDEVICESIGNATURE.value
+    msg = control_word
+    msg += pack('B', network_id)
+    msg += pack('B', destination_id)
+    msg += pack('B', device_id)
+    msg += pack('B', mdid_set | mdid_cmd)
+    msg += pack('B', cksum(msg))
+    packet = pack('B', PimCommand.UPB_NETWORK_TRANSMIT.value)
+    packet += hexlify(msg).swapcase()
+    return packet
+
+def hexdump(data, length=None):
+	if length is not None:
+		lines = ""
+		for seq in range(0, len(data), 16):
+			line = data[seq: seq + 16]
+			lines += ":".join("{:02x}".format(c) for c in line) + "\n"
+	else:
+		lines = ":".join("{:02x}".format(c) for c in data)
 	return lines
