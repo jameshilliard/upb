@@ -86,4 +86,6 @@ class UPBDevice:
     def update_signature(self, id_checksum, setup_checksum, ct_bytes):
         self.id_checksum = id_checksum
         self.setup_checksum = setup_checksum
+        self.ct_bytes = ct_bytes
+        self.registers[ct_bytes:256] = b'\x00' * (256 - ct_bytes)
         self.logger.debug(f"Device {self.network_id}:{self.device_id} id_checksum: {id_checksum}, setup_checksum: {setup_checksum}")
