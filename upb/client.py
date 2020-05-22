@@ -1,8 +1,9 @@
 import asyncio
 import logging
 from collections import defaultdict
+from struct import unpack
 from upb.protocol import UPBProtocol
-from upb.util import cksum, encode_register_request, encode_signature_request
+from upb.util import cksum, encode_register_request, encode_signature_request, encode_startsetup_request, encode_setuptime_request
 from upb.device import UPBDevice
 
 class UPBClient:
@@ -96,6 +97,20 @@ class UPBClient:
         response = await self.protocol.send_packet(packet)
         return response['id_checksum'], response['setup_checksum'], response['ct_bytes']
 
+    async def get_setup_time(self, network, device):
+        packet = encode_setuptime_request(network, device)
+        response = await self.protocol.send_packet(packet)
+        return response
+
+    async def test_password(self, network, device, password):
+        packet = encode_startsetup_request(network, device, password)
+        response = await self.protocol.send_packet(packet)
+        assert(response['password'] == password)
+        setup_time = await self.get_setup_time(network, device)
+        if setup_time['setup_mode_timer'] != 0:
+            return True
+        return False
+
     async def update_registers(self, network, device):
         """Fetch registers from device."""
         index = 0
@@ -120,7 +135,24 @@ class UPBClient:
         setup_diff = setup_checksum - setup_crc
         assert(upbid_diff == setup_diff)
         if upbid_diff != 0:
+            assert(upbid_diff <= 512)
             self.logger.info(f"password diff = {upbid_diff}")
+            password_test = bytearray(2)
+            if upbid_diff > 256:
+                password_test[0] = upbid_diff - 256
+                password_test[1] = 256
+            else:
+                password_test[1] = upbid_diff
+            while password_test[0] <= 256:
+                password_int = unpack('>H', password_test)[0]
+                self.logger.info(f"trying password = {password_int}")
+                good_password = await self.test_password(network, device, password_int)
+                if good_password:
+                    self.logger.info(f"got good password = {password_int}")
+                    break
+                else:
+                    password_test[0] += 1
+                    password_test[1] -= 1
 
     async def get_registers(self, network, device):
         await self.update_registers(network, device)

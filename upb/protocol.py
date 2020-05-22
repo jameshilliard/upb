@@ -5,7 +5,7 @@ from binascii import unhexlify
 from collections import deque
 from struct import unpack
 
-from upb.const import UpbMessage, UpbTransmission, \
+from upb.const import UpbMessage, UpbTransmission, PimCommand, \
     MdidSet, MdidCoreCmd, MdidDeviceControlCmd, MdidCoreReport, \
     UPB_MESSAGE_TYPE, UPB_MESSAGE_PIMREPORT_TYPE, INITIAL_PIM_REG_QUERY_BASE
 from upb.util import cksum, hexdump
@@ -37,14 +37,12 @@ class UPBProtocol(asyncio.Protocol):
         self.pulse_data_seq = 0
         self.packet_byte = 0
         self.packet_crumb = 0
-        self.data_counter = 0
         self.waiters = deque()
         self.active_transaction = None
         self.active_packet = None
         self.in_transaction = False
 
     async def send_packet(self, packet):
-        self.logger.debug("sending packet")
         packet = await self._send_packet(packet)
         return packet
 
@@ -84,6 +82,7 @@ class UPBProtocol(asyncio.Protocol):
         self.packet_byte = 0
 
     def process_packet(self, packet):
+        self.logger.debug(f"Got upb message data: {hexdump(packet)}")
         control_word = packet[0:2]
         data_len = (control_word[0] & 0x1f) - 6
         transmit_cnt = control_word[1] & 0x0c >> 2
@@ -100,7 +99,8 @@ class UPBProtocol(asyncio.Protocol):
             mdid_cmd = MdidCoreReport(packet[5] & 0x1f)
         crc = packet[data_len + 5]
         computed_crc = cksum(packet[0:data_len + 5])
-        assert(crc == computed_crc)
+        if crc != computed_crc:
+            self.logger.error(f"crc: {crc} != computed_crc: {computed_crc}")
         response = {
             'transmit_cnt': transmit_cnt,
             'transmit_seq': transmit_seq,
@@ -137,9 +137,53 @@ class UPBProtocol(asyncio.Protocol):
             response['diagnostic'] = diagnostic
             self.signature_callback(network_id, source_id, id_checksum, setup_checksum, ct_bytes)
             self._process_received_packet(response)
+        elif mdid_cmd == MdidCoreReport.MDID_DEVICE_CORE_REPORT_SETUPTIME:
+            setup_mode_register = packet[6]
+            setup_mode_timer = packet[7]
+            response['setup_mode_register'] = setup_mode_register
+            response['setup_mode_timer'] = setup_mode_timer
+            self._process_received_packet(response)
         else:
             response['data'] = packet[6:data_len + 5]
         self.logger.debug(pformat(response))
+
+    def process_transmitted(self, data):
+        mystery_header = data[0]
+        packet = data[1:]
+        control_word = packet[0:2]
+        data_len = (control_word[0] & 0x1f) - 6
+        transmit_cnt = control_word[1] & 0x0c >> 2
+        transmit_seq = control_word[1] & 0x03
+        network_id = packet[2]
+        destination_id = packet[3]
+        source_id = packet[4]
+        mdid_set = MdidSet(packet[5] & 0xe0)
+        if mdid_set == MdidSet.MDID_CORE_COMMANDS:
+            mdid_cmd = MdidCoreCmd(packet[5] & 0x1f)
+        elif mdid_set == MdidSet.MDID_DEVICE_CONTROL_COMMANDS:
+            mdid_cmd = MdidDeviceControlCmd(packet[5] & 0x1f)
+        elif mdid_set == MdidSet.MDID_CORE_REPORTS:
+            mdid_cmd = MdidCoreReport(packet[5] & 0x1f)
+        crc = packet[data_len + 5]
+        computed_crc = cksum(packet[0:data_len + 5])
+        if crc != computed_crc:
+            self.logger.error(f"crc: {crc} != computed_crc: {computed_crc}")
+        response = {
+            'transmit_cnt': transmit_cnt,
+            'transmit_seq': transmit_seq,
+            'network_id': network_id,
+            'destination_id': destination_id,
+            'device_id': source_id,
+            'mdid_set': mdid_set,
+            'mdid_cmd': mdid_cmd
+        }
+        if mdid_cmd == MdidCoreCmd.MDID_CORE_COMMAND_STARTSETUP:
+            password = unpack('>H', packet[6:8])[0]
+            response['password'] = password
+            self._process_received_packet(response)
+        self.logger.debug(pformat(response))
+        self.logger.debug(f'pim transmitted packet: {hexdump(packet)}, with mystery_header: {hex(mystery_header)}')
+
 
     def line_received(self, line):
         if UpbMessage.has_value(line[UPB_MESSAGE_TYPE]):
@@ -183,7 +227,6 @@ class UPBProtocol(asyncio.Protocol):
                 self.packet_byte = 0
                 self.packet_crumb = 0
             elif UpbMessage.is_message_data(command):
-                self.data_counter += 1
                 if len(data) == 2:
                     seq = unhexlify(b'0' + data[1:2])[0]
                     two_bits = command.value - 0x30
@@ -235,22 +278,20 @@ class UPBProtocol(asyncio.Protocol):
                         self.logger.debug(f"Got upb message data bad seq: {hex(self.seq)}")
             elif command == UpbMessage.UPB_MESSAGE_ACK or command == UpbMessage.UPB_MESSAGE_NAK:
                 if self.transmitted:
-                    self.message_buffer = bytes(self.upb_packet[1:self.packet_byte - 1])
+                    self.message_buffer = bytes(self.upb_packet[0:self.packet_byte])
+                    if len(self.message_buffer) != 0:
+                        self.process_transmitted(self.message_buffer)
+                    self.set_state_zero()
                 else:
                     self.message_buffer = bytes(self.upb_packet[0:self.packet_byte])
                     if len(self.message_buffer) != 0:
                         self.process_packet(self.message_buffer)
-                if self.transmitted and len(self.message_buffer) != 0:
-                    self.logger.debug(f"Got upb pim message data: {hexdump(self.message_buffer)}")
-                elif len(self.message_buffer) != 0:
-                    self.logger.debug(f"Got upb message data: {hexdump(self.message_buffer)}")
                 if len(self.message_buffer) != 0:
                     if self.last_command.get('mdid_cmd', None) == MdidCoreCmd.MDID_CORE_COMMAND_GETDEVICESIGNATURE:
                         self.logger.debug(f"Decoding signature with length {len(self.message_buffer)}")
                         for index in range(len(self.message_buffer)):
                             self.logger.debug(f"Reg index: {index}, value: {hex(self.message_buffer[index])}")
                 self.message_buffer = b''
-                self.data_counter = 0
                 if self.packet_byte > 0:
                     self.set_state_zero()
         else:

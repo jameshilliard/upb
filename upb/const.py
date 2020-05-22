@@ -19,7 +19,7 @@ class UpbTransmission(Enum):
     UPB_MESSAGE = 0x55 # U
     UPB_PIM_ACCEPT = 0x41 # A
     UPB_PIM_BUSY = 0x42 # B
-    UPB_PIM_ERROR = 0x45 # 'E'
+    UPB_PIM_ERROR = 0x45 # E
     UPB_PIM_REGISTERS = 0x52 # R
     UPB_TRANSMISSION_ACK = 0x4b # K
     UPB_TRANSMISSION_NAK = 0x4e # N
