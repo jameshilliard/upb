@@ -119,12 +119,12 @@ def encode_setuptime_request(network, device):
     packet += hexlify(msg).swapcase()
     return packet
 
-def hexdump(data, length=None):
+def hexdump(data, length=None, sep=':'):
     if length is not None:
         lines = ""
         for seq in range(0, len(data), 16):
             line = data[seq: seq + 16]
-            lines += ":".join("{:02x}".format(c) for c in line) + "\n"
+            lines += sep.join("{:02x}".format(c) for c in line) + "\n"
     else:
-        lines = ":".join("{:02x}".format(c) for c in data)
+        lines = sep.join("{:02x}".format(c) for c in data)
     return lines

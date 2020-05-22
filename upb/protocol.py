@@ -62,6 +62,10 @@ class UPBProtocol(asyncio.Protocol):
 
     def _send_next_packet(self):
         """Write next packet in send queue."""
+        assert(self.packet_byte == 0)
+        assert(self.pulse_data_seq == 0)
+        assert(self.packet_crumb == 0)
+        self.set_state_zero()
         if self.waiters and self.in_transaction is False:
             waiter, packet = self.waiters.popleft()
             self.logger.debug(f'sending packet: {packet}')
@@ -143,6 +147,7 @@ class UPBProtocol(asyncio.Protocol):
             response['setup_mode_register'] = setup_mode_register
             response['setup_mode_timer'] = setup_mode_timer
             self._process_received_packet(response)
+            self._send_next_packet()
         else:
             response['data'] = packet[6:data_len + 5]
         self.logger.debug(pformat(response))
@@ -181,6 +186,7 @@ class UPBProtocol(asyncio.Protocol):
             password = unpack('>H', packet[6:8])[0]
             response['password'] = password
             self._process_received_packet(response)
+            self._send_next_packet()
         self.logger.debug(pformat(response))
         self.logger.debug(f'pim transmitted packet: {hexdump(packet)}, with mystery_header: {hex(mystery_header)}')
 
@@ -194,10 +200,6 @@ class UPBProtocol(asyncio.Protocol):
             not UpbMessage.is_message_data(command):
                 self.logger.debug(f"PIM {command.name} data: {data}")
             if command == UpbMessage.UPB_MESSAGE_IDLE:
-                assert(self.packet_byte == 0)
-                assert(self.pulse_data_seq == 0)
-                assert(self.packet_crumb == 0)
-                self.set_state_zero()
                 self._send_next_packet()
             elif command == UpbMessage.UPB_MESSAGE_DROP:
                 self.logger.debug('dropped message')
@@ -279,11 +281,12 @@ class UPBProtocol(asyncio.Protocol):
             elif command == UpbMessage.UPB_MESSAGE_ACK or command == UpbMessage.UPB_MESSAGE_NAK:
                 if self.transmitted:
                     self.message_buffer = bytes(self.upb_packet[0:self.packet_byte])
+                    self.set_state_zero()
                     if len(self.message_buffer) != 0:
                         self.process_transmitted(self.message_buffer)
-                    self.set_state_zero()
                 else:
                     self.message_buffer = bytes(self.upb_packet[0:self.packet_byte])
+                    self.set_state_zero()
                     if len(self.message_buffer) != 0:
                         self.process_packet(self.message_buffer)
                 if len(self.message_buffer) != 0:

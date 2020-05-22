@@ -3,7 +3,7 @@ import logging
 from collections import defaultdict
 from struct import unpack
 from upb.protocol import UPBProtocol
-from upb.util import cksum, encode_register_request, encode_signature_request, encode_startsetup_request, encode_setuptime_request
+from upb.util import cksum, hexdump, encode_register_request, encode_signature_request, encode_startsetup_request, encode_setuptime_request
 from upb.device import UPBDevice
 
 class UPBClient:
@@ -148,11 +148,15 @@ class UPBClient:
                 self.logger.info(f"trying password = {password_int}")
                 good_password = await self.test_password(network, device, password_int)
                 if good_password:
-                    self.logger.info(f"got good password = {password_int}")
+                    packet = encode_register_request(network, device, 2, 2)
+                    response = await self.protocol.send_packet(packet)
+                    pw_register = unpack('>H', response['register_val'])[0]
+                    assert(pw_register == password_int)
                     break
                 else:
                     password_test[0] += 1
                     password_test[1] -= 1
+        self.logger.info(f"got good password = {hexdump(self.get_device(network, device).registers[2:4], sep='')}")
 
     async def get_registers(self, network, device):
         await self.update_registers(network, device)
