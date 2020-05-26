@@ -138,22 +138,109 @@ class UPBClient:
             assert(upbid_diff <= 512)
             self.logger.info(f"password diff = {upbid_diff}")
             password_test = bytearray(2)
-            if upbid_diff > 256:
-                password_test[0] = upbid_diff - 256
-                password_test[1] = 256
+            # Start with numeric only guesses if diff is < checksum for password = 9999
+            if upbid_diff > 306:
+                numeric_only = False
             else:
-                password_test[1] = upbid_diff
-            while password_test[0] <= 256:
-                password_int = unpack('>H', password_test)[0]
-                self.logger.info(f"trying password = {password_int}")
-                good_password = await self.test_password(network, device, password_int)
-                if good_password:
-                    packet = encode_register_request(network, device, 2, 2)
-                    response = await self.protocol.send_packet(packet)
-                    pw_register = unpack('>H', response['register_val'])[0]
-                    assert(pw_register == password_int)
-                    break
+                numeric_only = True
+            tested = {}
+            got_numeric = False
+            if numeric_only:
+                low_bits = upbid_diff % 16
+                high_bits = (upbid_diff - low_bits) // 16
+                shifted = False
+                # fill out low bits first (9+9) - 16 = 2
+                if low_bits <= 2 and high_bits > 0:
+                    low_bits += 16
+                    high_bits -= 1
+                    shifted = True
+                if low_bits > 9:
+                    password_test[0] = low_bits - 9
+                    password_test[1] = 9
                 else:
+                    password_test[1] = low_bits
+                if high_bits > 9:
+                    password_test[0] |= ((high_bits - 9) << 4)
+                    password_test[1] |= (9 << 4)
+                else:
+                    password_test[1] |= (high_bits << 4)
+                shift_tested = False
+                while True:
+                    low_tested = False
+                    while low_tested == False:
+                        password_int = unpack('>H', password_test)[0]
+                        self.logger.info(f"trying password = {hexdump(password_test)}")
+                        good_password = await self.test_password(network, device, password_int)
+                        if good_password:
+                            packet = encode_register_request(network, device, 2, 2)
+                            response = await self.protocol.send_packet(packet)
+                            pw_register = unpack('>H', response['register_val'])[0]
+                            assert(pw_register == password_int)
+                            got_numeric = True
+                            break
+                        else:
+                            if (password_test[0] & 0xf) == 9 or (password_test[1] & 0xf) == 0:
+                                low_tested = True
+                                if (password_test[0] & 0xf) == 9:
+                                    rev_shift = 9 - (password_test[1] & 0xf)
+                                else:
+                                    rev_shift = password_test[1] & 0xf
+                                password_test[0] -= rev_shift
+                                password_test[1] += rev_shift
+                            else:
+                                password_test[0] += 1
+                                password_test[1] -= 1
+                    else:
+                        if ((password_test[0] & 0xf0) >> 4) == 9 or ((password_test[1] & 0xf0) >> 4) == 0:
+                            if shifted == True and shift_tested == False:
+                                low_bits -= 16
+                                high_bits += 1
+                                if low_bits > 9:
+                                    password_test[0] = low_bits - 9
+                                    password_test[1] = 9
+                                else:
+                                    password_test[1] = low_bits
+                                if high_bits > 9:
+                                    password_test[0] |= ((high_bits - 9) << 4)
+                                    password_test[1] |= (9 << 4)
+                                else:
+                                    password_test[1] |= (high_bits << 4)
+                                shift_tested = True
+                            else:
+                                break
+                        else:
+                            password_test[0] += 16
+                            password_test[1] -= 16
+                        continue
+                    break
+
+            if got_numeric == False:
+                if upbid_diff > 256:
+                    password_test[0] = upbid_diff - 256
+                    password_test[1] = 256
+                else:
+                    password_test[1] = upbid_diff
+                while password_test[0] <= 256:
+                    if (password_test[0] & 0xf0) >> 4 <= 9:
+                        is_numeric = True
+                    elif (password_test[0] & 0xf) <= 9:
+                        is_numeric = True
+                    elif (password_test[1] & 0xf0) >> 4 <= 9:
+                        is_numeric = True
+                    elif (password_test[1] & 0xf) <= 9:
+                        is_numeric = True
+                    else:
+                        is_numeric = False
+                    if not is_numeric:
+                        password_int = unpack('>H', password_test)[0]
+                        self.logger.info(f"trying password = {hexdump(password_test)}")
+                        good_password = await self.test_password(network, device, password_int)
+                        if good_password:
+                            packet = encode_register_request(network, device, 2, 2)
+                            response = await self.protocol.send_packet(packet)
+                            pw_register = unpack('>H', response['register_val'])[0]
+                            assert(pw_register == password_int)
+                            break
                     password_test[0] += 1
                     password_test[1] -= 1
         self.logger.info(f"got good password = {hexdump(self.get_device(network, device).registers[2:4], sep='')}")
