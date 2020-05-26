@@ -219,15 +219,13 @@ class UPBClient:
                     password_test[0] = upbid_diff - 0xff
                     password_test[1] = 0xff
                 else:
+                    password_test[0] = 0
                     password_test[1] = upbid_diff
                 while password_test[0] <= 0xff:
-                    if (password_test[0] & 0xf0) >> 4 <= 9:
-                        is_numeric = True
-                    elif (password_test[0] & 0xf) <= 9:
-                        is_numeric = True
-                    elif (password_test[1] & 0xf0) >> 4 <= 9:
-                        is_numeric = True
-                    elif (password_test[1] & 0xf) <= 9:
+                    if (password_test[0] & 0xf0) >> 4 <= 9 and \
+                    (password_test[0] & 0xf) <= 9 and \
+                    (password_test[1] & 0xf0) >> 4 <= 9 and \
+                    (password_test[1] & 0xf) <= 9:
                         is_numeric = True
                     else:
                         is_numeric = False
