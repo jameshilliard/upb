@@ -169,7 +169,7 @@ class UPBClient:
                     low_tested = False
                     while low_tested == False:
                         password_int = unpack('>H', password_test)[0]
-                        self.logger.info(f"trying password = {hexdump(password_test)}")
+                        self.logger.info(f"trying password = {hexdump(password_test, sep='')}")
                         good_password = await self.test_password(network, device, password_int)
                         if good_password:
                             packet = encode_register_request(network, device, 2, 2)
@@ -215,12 +215,12 @@ class UPBClient:
                     break
 
             if got_numeric == False:
-                if upbid_diff > 256:
-                    password_test[0] = upbid_diff - 256
-                    password_test[1] = 256
+                if upbid_diff > 0xff:
+                    password_test[0] = upbid_diff - 0xff
+                    password_test[1] = 0xff
                 else:
                     password_test[1] = upbid_diff
-                while password_test[0] <= 256:
+                while password_test[0] <= 0xff:
                     if (password_test[0] & 0xf0) >> 4 <= 9:
                         is_numeric = True
                     elif (password_test[0] & 0xf) <= 9:
@@ -233,7 +233,7 @@ class UPBClient:
                         is_numeric = False
                     if not is_numeric:
                         password_int = unpack('>H', password_test)[0]
-                        self.logger.info(f"trying password = {hexdump(password_test)}")
+                        self.logger.info(f"trying password = {hexdump(password_test, sep='')}")
                         good_password = await self.test_password(network, device, password_int)
                         if good_password:
                             packet = encode_register_request(network, device, 2, 2)
