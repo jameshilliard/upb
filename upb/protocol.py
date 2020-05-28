@@ -200,6 +200,8 @@ class UPBProtocol(asyncio.Protocol):
             not UpbMessage.is_message_data(command):
                 self.logger.debug(f"PIM {command.name} data: {data}")
             if command == UpbMessage.UPB_MESSAGE_IDLE:
+                if self.in_transaction:
+                    self.logger.debug(f"Received PIM idle data: {data}")
                 self._send_next_packet()
             elif command == UpbMessage.UPB_MESSAGE_DROP:
                 self.logger.debug('dropped message')
