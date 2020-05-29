@@ -117,6 +117,7 @@ class UPBClient:
         upbid_crc = 0
         setup_crc = 0
         id_checksum, setup_checksum, ct_bytes = await self.update_signature(network, device)
+        tasks = []
         while index < ct_bytes:
             start = index
             remaining = ct_bytes - index
@@ -125,12 +126,13 @@ class UPBClient:
             else:
                 req_len = remaining
             packet = encode_register_request(network, device, start, req_len)
-            response = await self.protocol.send_packet(packet)
-            assert(response['setup_register'] == start)
-            index += len(response['register_val'])
-            upbid_crc = sum(self.get_device(network, device).registers[0:64])
-            setup_crc = sum(self.get_device(network, device).registers[0:ct_bytes])
-            self.logger.debug(f"id_checksum: {id_checksum}, setup_checksum: {setup_checksum}, upbid_crc: {upbid_crc}, setup_crc: {setup_crc}")
+            response = asyncio.ensure_future(self.protocol.send_packet(packet))
+            tasks.append(response)
+            index += req_len
+        await asyncio.gather(*tasks)
+        upbid_crc = sum(self.get_device(network, device).registers[0:64])
+        setup_crc = sum(self.get_device(network, device).registers[0:ct_bytes])
+        self.logger.debug(f"id_checksum: {id_checksum}, setup_checksum: {setup_checksum}, upbid_crc: {upbid_crc}, setup_crc: {setup_crc}")
         upbid_diff = id_checksum - upbid_crc
         setup_diff = setup_checksum - setup_crc
         assert(upbid_diff == setup_diff)

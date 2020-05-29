@@ -31,6 +31,7 @@ class UPBProtocol(asyncio.Protocol):
         self.buffer = b''
         self.last_command = {}
         self.last_transmitted = None
+        self.idle_count = 0
         self.in_flight = {}
         self.message_buffer = b''
         self.pim_accept = False
@@ -52,25 +53,31 @@ class UPBProtocol(asyncio.Protocol):
         """Add packet to send queue."""
         fut = self.loop.create_future()
         self.waiters.append((fut, cmd, packet))
-        self._send_next_packet()
         return fut
 
     def _process_pim_accept(self):
         self.logger.debug("got pim accept")
         self.in_transaction = False
         self.active_packet = None
-        self._send_next_packet()
+
+    def _process_pim_busy(self):
+        if self.in_transaction:
+            cmd, packet = self.active_packet
+            msg = pack('B', cmd.value)
+            msg += hexlify(packet).swapcase()
+            msg += b'\r'
+            self.logger.warning(f'resending packet: {hexdump(packet)}, msg: {msg}')
+            self.transport.write(msg)
 
     def _process_received_packet(self, packet):
         active_transaction = self.in_flight.pop(self.last_transmitted, None)
         self.last_transmitted = None
         if active_transaction is not None:
             active_transaction.set_result(packet)
-        self._send_next_packet()
 
     def _send_next_packet(self):
         """Write next packet in send queue."""
-        if self.waiters and self.in_transaction is False:
+        if self.waiters and self.in_transaction is False and len(self.in_flight) <= 0:
             waiter, cmd, packet = self.waiters.popleft()
             self.in_flight[packet] = waiter
             self.in_transaction = True
@@ -80,6 +87,9 @@ class UPBProtocol(asyncio.Protocol):
             msg += b'\r'
             self.logger.debug(f'sending packet: {hexdump(packet)}, msg: {msg}')
             self.transport.write(msg)
+
+    def _handle_blackout(self):
+        self._send_next_packet()
 
     def connection_made(self, transport):
         self.logger.debug("connected to PIM")
@@ -154,7 +164,6 @@ class UPBProtocol(asyncio.Protocol):
             response['setup_mode_register'] = setup_mode_register
             response['setup_mode_timer'] = setup_mode_timer
             self._process_received_packet(response)
-            self._send_next_packet()
         else:
             response['data'] = packet[6:data_len + 5]
         self.logger.debug(pformat(response))
@@ -194,7 +203,13 @@ class UPBProtocol(asyncio.Protocol):
             password = unpack('>H', packet[6:8])[0]
             response['password'] = password
             self._process_received_packet(response)
-            self._send_next_packet()
+        elif mdid_cmd == MdidCoreCmd.MDID_CORE_COMMAND_GETREGISTERVALUES:
+            register_start = packet[6]
+            registers = packet[7]
+            response['register_start'] = register_start
+            response['registers'] = registers
+        else:
+            response['data'] = packet[6:]
         self.logger.debug(pformat(response))
         self.logger.debug(f'pim transmitted packet: {hexdump(packet)}, with mystery_header: {hex(mystery_header)}')
 
@@ -208,11 +223,14 @@ class UPBProtocol(asyncio.Protocol):
             not UpbMessage.is_message_data(command):
                 self.logger.debug(f"PIM {command.name} data: {data}")
             if command == UpbMessage.UPB_MESSAGE_IDLE:
-                if self.in_transaction or self.in_flight:
-                    self.logger.debug(f"Received PIM idle data: {data}")
-                self._send_next_packet()
-            elif command == UpbMessage.UPB_MESSAGE_DROP:
-                self.logger.debug('dropped message')
+                self._handle_blackout()
+                self.idle_count += 1
+            else:
+                if self.idle_count != 0:
+                    self.logger.debug(f"Received PIM idle count: {self.idle_count}")
+                self.idle_count = 0
+            if command == UpbMessage.UPB_MESSAGE_DROP:
+                self.logger.error('dropped message')
                 self.set_state_zero()
             elif command == UpbMessage.UPB_MESSAGE_PIMREPORT:
                 self.logger.debug(f"got pim report: {hex(line[UPB_MESSAGE_PIMREPORT_TYPE])} with len: {len(line)}")
@@ -228,16 +246,21 @@ class UPBProtocol(asyncio.Protocol):
                             self.logger.debug("got pim in initial phase query mode")
                     elif transmission == UpbTransmission.UPB_PIM_ACCEPT:
                         self._process_pim_accept()
+                    elif transmission == UpbTransmission.UPB_PIM_BUSY:
+                        self._process_pim_busy()
                 else:
-                    self.logger.debug(f'got corrupt pim report: {hex(line[UPB_MESSAGE_PIMREPORT_TYPE])} with len: {len(line)}')
+                    self.logger.error(f'got corrupt pim report: {hex(line[UPB_MESSAGE_PIMREPORT_TYPE])} with len: {len(line)}')
 
             elif command == UpbMessage.UPB_MESSAGE_SYNC:
+                self._handle_blackout()
                 self.packet_byte = 0
                 self.packet_crumb = 0
             elif command == UpbMessage.UPB_MESSAGE_START:
+                self._handle_blackout()
                 self.packet_byte = 0
                 self.packet_crumb = 0
             elif UpbMessage.is_message_data(command):
+                self._handle_blackout()
                 if len(data) == 2:
                     seq = unhexlify(b'0' + data[1:2])[0]
                     two_bits = command.value - 0x30
@@ -263,6 +286,7 @@ class UPBProtocol(asyncio.Protocol):
                         self.logger.debug(f"Got upb message data bad seq: {hex(self.seq)}")
 
             elif command == UpbMessage.UPB_MESSAGE_TRANSMITTED:
+                self._handle_blackout()
                 self.transmitted = True
                 if len(data) == 2:
                     seq = unhexlify(b'0' + data[1:2])[0]
@@ -286,8 +310,9 @@ class UPBProtocol(asyncio.Protocol):
                         if self.pulse_data_seq > 0x0f:
                             self.pulse_data_seq = 0
                     else:
-                        self.logger.debug(f"Got upb message data bad seq: {hex(self.seq)}")
+                        self.logger.warning(f"Got upb message data bad seq: {hex(self.seq)}")
             elif command == UpbMessage.UPB_MESSAGE_ACK or command == UpbMessage.UPB_MESSAGE_NAK:
+                self._handle_blackout()
                 if self.transmitted:
                     self.message_buffer = bytes(self.upb_packet[0:self.packet_byte])
                     self.set_state_zero()
@@ -307,7 +332,7 @@ class UPBProtocol(asyncio.Protocol):
                 if self.packet_byte > 0:
                     self.set_state_zero()
         else:
-            self.logger.debug(f'PIM failed to parse line: {hexdump(line)}')
+            self.logger.error(f'PIM failed to parse line: {hexdump(line)}')
 
     def data_received(self, data):
         self.buffer += data
