@@ -1,9 +1,9 @@
 import asyncio
 import logging
 from pprint import pformat
-from binascii import unhexlify
+from binascii import hexlify, unhexlify
 from collections import deque
-from struct import unpack
+from struct import pack, unpack
 
 from upb.const import UpbMessage, UpbTransmission, PimCommand, \
     MdidSet, MdidCoreCmd, MdidDeviceControlCmd, MdidCoreReport, \
@@ -30,6 +30,8 @@ class UPBProtocol(asyncio.Protocol):
         self.server_transport = None
         self.buffer = b''
         self.last_command = {}
+        self.last_transmitted = None
+        self.in_flight = {}
         self.message_buffer = b''
         self.pim_accept = False
         self.transmitted = False
@@ -38,41 +40,46 @@ class UPBProtocol(asyncio.Protocol):
         self.packet_byte = 0
         self.packet_crumb = 0
         self.waiters = deque()
-        self.active_transaction = None
         self.active_packet = None
         self.in_transaction = False
 
     async def send_packet(self, packet):
-        packet = await self._send_packet(packet)
+        cmd = PimCommand.UPB_NETWORK_TRANSMIT
+        packet = await self._send_packet(cmd, packet)
         return packet
 
-    def _send_packet(self, packet):
+    def _send_packet(self, cmd, packet):
         """Add packet to send queue."""
         fut = self.loop.create_future()
-        self.waiters.append((fut, packet))
+        self.waiters.append((fut, cmd, packet))
         self._send_next_packet()
         return fut
 
+    def _process_pim_accept(self):
+        self.logger.debug("got pim accept")
+        self.in_transaction = False
+        self.active_packet = None
+        self._send_next_packet()
+
     def _process_received_packet(self, packet):
-        if self.in_transaction:
-            self.active_transaction.set_result(packet)
-            self.active_transaction = None
-            self.in_transaction = False
-            self.active_packet = None
+        active_transaction = self.in_flight.pop(self.last_transmitted, None)
+        self.last_transmitted = None
+        if active_transaction is not None:
+            active_transaction.set_result(packet)
+        self._send_next_packet()
 
     def _send_next_packet(self):
         """Write next packet in send queue."""
-        assert(self.packet_byte == 0)
-        assert(self.pulse_data_seq == 0)
-        assert(self.packet_crumb == 0)
-        self.set_state_zero()
         if self.waiters and self.in_transaction is False:
-            waiter, packet = self.waiters.popleft()
-            self.logger.debug(f'sending packet: {packet}')
-            self.active_transaction = waiter
+            waiter, cmd, packet = self.waiters.popleft()
+            self.in_flight[packet] = waiter
             self.in_transaction = True
-            self.active_packet = packet
-            self.transport.write(packet + b'\r')
+            self.active_packet = (cmd, packet)
+            msg = pack('B', cmd.value)
+            msg += hexlify(packet).swapcase()
+            msg += b'\r'
+            self.logger.debug(f'sending packet: {hexdump(packet)}, msg: {msg}')
+            self.transport.write(msg)
 
     def connection_made(self, transport):
         self.logger.debug("connected to PIM")
@@ -155,6 +162,7 @@ class UPBProtocol(asyncio.Protocol):
     def process_transmitted(self, data):
         mystery_header = data[0]
         packet = data[1:]
+        self.last_transmitted = packet
         control_word = packet[0:2]
         data_len = (control_word[0] & 0x1f) - 6
         transmit_cnt = control_word[1] & 0x0c >> 2
@@ -200,7 +208,7 @@ class UPBProtocol(asyncio.Protocol):
             not UpbMessage.is_message_data(command):
                 self.logger.debug(f"PIM {command.name} data: {data}")
             if command == UpbMessage.UPB_MESSAGE_IDLE:
-                if self.in_transaction:
+                if self.in_transaction or self.in_flight:
                     self.logger.debug(f"Received PIM idle data: {data}")
                 self._send_next_packet()
             elif command == UpbMessage.UPB_MESSAGE_DROP:
@@ -219,8 +227,7 @@ class UPBProtocol(asyncio.Protocol):
                         if start == INITIAL_PIM_REG_QUERY_BASE:
                             self.logger.debug("got pim in initial phase query mode")
                     elif transmission == UpbTransmission.UPB_PIM_ACCEPT:
-                        self.pim_accept = True
-                        self.logger.debug("got pim accept")
+                        self._process_pim_accept()
                 else:
                     self.logger.debug(f'got corrupt pim report: {hex(line[UPB_MESSAGE_PIMREPORT_TYPE])} with len: {len(line)}')
 

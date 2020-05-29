@@ -34,9 +34,7 @@ def format_transmit_packet(network, device, cmd, data=None, link=False, ack=UpbR
     if data is not None:
         msg += data
     msg += pack('B', cksum(msg))
-    packet = pack('B', PimCommand.UPB_NETWORK_TRANSMIT.value)
-    packet += hexlify(msg).swapcase()
-    return packet
+    return msg
 
 def encode_register_request(network, device, register_start=0, registers=16):
     """Encode a register request for the PIM to transmit"""
