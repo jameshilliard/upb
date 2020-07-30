@@ -5,7 +5,7 @@ from binascii import hexlify, unhexlify
 from collections import deque
 from struct import pack, unpack
 
-from upb.const import UpbMessage, UpbTransmission, PimCommand, \
+from upb.const import UpbMessage, UpbTransmission, PimCommand, UpbReg, \
     MdidSet, MdidCoreCmd, MdidDeviceControlCmd, MdidCoreReport, \
     UPB_MESSAGE_TYPE, UPB_MESSAGE_PIMREPORT_TYPE, INITIAL_PIM_REG_QUERY_BASE
 from upb.util import cksum, hexdump
@@ -23,6 +23,7 @@ class UPBProtocol(asyncio.Protocol):
             self.logger = logger
         else:
             self.logger = logging.getLogger(__name__)
+        self._cmd_timeout = None
         self.client = client
         self.disconnect_callback = disconnect_callback
         self.register_callback = register_callback
@@ -33,6 +34,7 @@ class UPBProtocol(asyncio.Protocol):
         self.last_transmitted = None
         self.idle_count = 0
         self.in_flight = {}
+        self.in_flight_reg = {}
         self.message_buffer = b''
         self.pim_accept = False
         self.transmitted = False
@@ -43,16 +45,46 @@ class UPBProtocol(asyncio.Protocol):
         self.waiters = deque()
         self.active_packet = None
         self.in_transaction = False
+        self.pulse = False
+
+    def _reset_cmd_timeout(self):
+        """Reset timeout for command execution."""
+        if self._cmd_timeout:
+            self._cmd_timeout.cancel()
+        self._cmd_timeout = self.loop.call_later(2, self._resend_packet)
+
+    async def pim_memory_read(self, address):
+        cmd = PimCommand.UPB_PIM_READ
+        if address == UpbReg.UPB_REG_FIRMWAREVERSION:
+            registers = 0x02
+        elif address == UpbReg.UPB_REG_PIMOPTIONS:
+            registers = 0x01
+        elif address == UpbReg.UPB_REG_MANUFACTURERID:
+            registers = 0x02
+        elif address == UpbReg.UPB_REG_PRODUCTID:
+            registers = 0x02
+        elif address == UpbReg.UPB_REG_UPBOPTIONS:
+            registers = 0x01
+        elif address == UpbReg.UPB_REG_UPBVERSION:
+            registers = 0x01
+        elif address == UpbReg.UPB_REG_NOISEFLOOR:
+            registers = 0x01
+        data = pack('B', address.value) + pack('B', registers)
+        packet = data + pack('B', cksum(data))
+        fut = await self._send_packet(cmd, packet)
+        return fut
 
     async def send_packet(self, packet):
         cmd = PimCommand.UPB_NETWORK_TRANSMIT
-        packet = await self._send_packet(cmd, packet)
-        return packet
+        fut = await self._send_packet(cmd, packet)
+        return fut
 
     def _send_packet(self, cmd, packet):
         """Add packet to send queue."""
         fut = self.loop.create_future()
         self.waiters.append((fut, cmd, packet))
+        if not self.pulse:
+            self._send_next_packet()
         return fut
 
     def _process_pim_accept(self):
@@ -73,13 +105,43 @@ class UPBProtocol(asyncio.Protocol):
         active_transaction = self.in_flight.pop(self.last_transmitted, None)
         self.last_transmitted = None
         if active_transaction is not None:
+            self._cmd_timeout.cancel()
             active_transaction.set_result(packet)
+
+    def _process_received_pim_reg(self, address, registers):
+        active_transaction = self.in_flight_reg.pop(address, None)
+        if active_transaction is not None:
+            self._cmd_timeout.cancel()
+            active_transaction.set_result(registers)
+            self.in_transaction = False
+
+    def _resend_packet(self):
+        """Write next packet in send queue."""
+        cmd, packet = self.active_packet
+        msg = pack('B', cmd.value)
+        msg += hexlify(packet).swapcase()
+        msg += b'\r'
+        self.logger.warning(f'resending packet due to timeout: {hexdump(packet)}, msg: {msg}')
+        self.transport.write(msg)
+        self._reset_cmd_timeout()
 
     def _send_next_packet(self):
         """Write next packet in send queue."""
-        if self.waiters and self.in_transaction is False and len(self.in_flight) <= 0:
+        if self.waiters and self.in_transaction is False and len(self.in_flight) <= 0 \
+            and len(self.in_flight_reg) <= 0:
             waiter, cmd, packet = self.waiters.popleft()
-            self.in_flight[packet] = waiter
+            if cmd == PimCommand.UPB_NETWORK_TRANSMIT:
+                if self.pulse:
+                    self.in_flight[packet] = waiter
+                else:
+                    self.logger.debug("waiting on pulse mode, requeuing transmission")
+                    self.waiters.append((waiter, cmd, packet))
+                    return
+            elif cmd == PimCommand.UPB_PIM_READ:
+                address = packet[0]
+                self.in_flight_reg[address] = waiter
+            else:
+                self.logger.error(f"unknown command: {cmd.name}")
             self.in_transaction = True
             self.active_packet = (cmd, packet)
             msg = pack('B', cmd.value)
@@ -87,13 +149,16 @@ class UPBProtocol(asyncio.Protocol):
             msg += b'\r'
             self.logger.debug(f'sending packet: {hexdump(packet)}, msg: {msg}')
             self.transport.write(msg)
+            self._reset_cmd_timeout()
 
     def _handle_blackout(self):
+        self.pulse = True
         self._send_next_packet()
 
     def connection_made(self, transport):
         self.logger.debug("connected to PIM")
         self.connected = True
+        self.initial = True
         self.transport = transport
 
     def set_state_zero(self):
@@ -241,7 +306,11 @@ class UPBProtocol(asyncio.Protocol):
                         register_data = unhexlify(line[UPB_MESSAGE_PIMREPORT_TYPE + 1:])
                         start = register_data[0]
                         register_val = register_data[1:]
-                        self.logger.debug(f"start: {hex(start)} register_val: {register_val}")
+                        cmd, packet = self.active_packet
+                        if cmd == PimCommand.UPB_PIM_READ and start == packet[0]:
+                            self._process_received_pim_reg(start, register_val)
+                            self._send_next_packet()
+                        self.logger.debug(f"start: {hex(start)} register_val: {hexdump(register_val)}")
                         if start == INITIAL_PIM_REG_QUERY_BASE:
                             self.logger.debug("got pim in initial phase query mode")
                     elif transmission == UpbTransmission.UPB_PIM_ACCEPT:
@@ -345,3 +414,4 @@ class UPBProtocol(asyncio.Protocol):
 
     def connection_lost(self, *args):
         self.connected = False
+        self.initial = False

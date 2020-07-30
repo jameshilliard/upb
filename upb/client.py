@@ -1,7 +1,9 @@
 import asyncio
 import logging
+from pprint import pformat
 from collections import defaultdict
 from struct import unpack
+from upb.const import UpbReg
 from upb.protocol import UPBProtocol
 from upb.util import cksum, hexdump, encode_register_request, encode_signature_request, encode_startsetup_request, encode_setuptime_request
 from upb.device import UPBDevice
@@ -54,10 +56,55 @@ class UPBClient:
                                     str(exc))
             else:
                 self.is_connected = True
+                await self.pim_init()
                 if self.reconnect_callback:
                     self.reconnect_callback()
                 break
             await asyncio.sleep(self.reconnect_interval)
+
+    async def pim_init(self):
+        pim_info = await self.pim_info()
+        self.logger.debug(pformat(pim_info))
+
+    async def pim_info(self):
+        info = {}
+        info['firmware_version'] = await self.pim_get_firmware_version()
+        info['mode'] = await self.pim_get_mode()
+        info['manufacturer'] = await self.pim_get_manufacturer()
+        info['product'] = await self.pim_get_product()
+        info['options'] = await self.pim_get_options()
+        info['pulse'] = (info['options'] & 0x02) == 0
+        info['upb_version'] = await self.pim_get_upb_version()
+        info['noisefloor'] = await self.pim_get_noisefloor()
+        return info
+
+    async def pim_get_firmware_version(self):
+        version = await self.protocol.pim_memory_read(UpbReg.UPB_REG_FIRMWAREVERSION)
+        return version
+
+    async def pim_get_mode(self):
+        mode = await self.protocol.pim_memory_read(UpbReg.UPB_REG_PIMOPTIONS)
+        return mode[0]
+
+    async def pim_get_manufacturer(self):
+        manufacturer = await self.protocol.pim_memory_read(UpbReg.UPB_REG_MANUFACTURERID)
+        return manufacturer
+
+    async def pim_get_product(self):
+        product = await self.protocol.pim_memory_read(UpbReg.UPB_REG_PRODUCTID)
+        return product
+
+    async def pim_get_options(self):
+        options = await self.protocol.pim_memory_read(UpbReg.UPB_REG_UPBOPTIONS)
+        return options[0]
+
+    async def pim_get_upb_version(self):
+        upb_version = await self.protocol.pim_memory_read(UpbReg.UPB_REG_UPBVERSION)
+        return upb_version[0]
+
+    async def pim_get_noisefloor(self):
+        noisefloor = await self.protocol.pim_memory_read(UpbReg.UPB_REG_NOISEFLOOR)
+        return noisefloor[0]
 
     def stop(self):
         """Shut down transport."""
@@ -145,7 +192,6 @@ class UPBClient:
                 numeric_only = False
             else:
                 numeric_only = True
-            tested = {}
             got_numeric = False
             if numeric_only:
                 low_bits = upbid_diff % 16

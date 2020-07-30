@@ -9,9 +9,15 @@ class Dictionary:
     # Implement the iterator method such that dict(...) results in the correct
     # dictionary.
     def __iter__(self):
+        subtypes = (RockerAction, UPBButtonAction, UPBIndicator, UPBInput, IOMInput, TimedEvent, ESIComponent)
         for k, t in self._fields_:
             if k not in {'reserved1', 'reserved2', 'reserved3', 'reserved4', 'reserved5'}:
-                if (issubclass(t, Structure)):
+                if isinstance(t, subtypes):
+                    nd = defaultdict(dict)
+                    for nk, nt in t._fields_:
+                        nd[nk] = getattr(t, nk)
+                    yield (k, dict(nd))
+                elif (issubclass(t, Structure)):
                     for nk, nt in getattr(self, k):
                         yield (nk, getattr(self, nk))
                 elif (issubclass(t, Array)):
@@ -19,7 +25,7 @@ class Dictionary:
                     al = []
                     for ai in range(len(ak)):
                         av = ak[ai]
-                        if isinstance(av, (RockerAction, UPBButtonAction, UPBIndicator, UPBInput, IOMInput, TimedEvent, ESIComponent)):
+                        if isinstance(av, subtypes):
                             nd = defaultdict(dict)
                             for nk, nt in av._fields_:
                                 nd[nk] = getattr(av, nk)
