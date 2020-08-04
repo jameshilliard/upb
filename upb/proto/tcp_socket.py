@@ -1,14 +1,4 @@
 import asyncio
-import logging
-from pprint import pformat
-from binascii import hexlify, unhexlify
-from collections import deque
-from struct import pack, unpack
-
-from upb.const import UpbMessage, UpbTransmission, PimCommand, UpbReg, \
-    MdidSet, MdidCoreCmd, MdidDeviceControlCmd, MdidCoreReport, \
-    UPB_MESSAGE_TYPE, UPB_MESSAGE_PIMREPORT_TYPE, INITIAL_PIM_REG_QUERY_BASE
-from upb.util import cksum, hexdump
 
 
 class UPBTCPProto(asyncio.Protocol):
