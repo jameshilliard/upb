@@ -4,9 +4,10 @@ from pprint import pformat
 from collections import defaultdict
 from struct import unpack
 from upb.const import UpbReg
-from upb.protocol import UPBProtocol
+from upb.pulse import UPBPulse
 from upb.util import cksum, hexdump, encode_register_request, encode_signature_request, encode_startsetup_request, encode_setuptime_request
 from upb.device import UPBDevice
+from upb.proto.tcp_socket import UPBTCPProto
 
 class UPBClient:
 
@@ -26,6 +27,7 @@ class UPBClient:
         self.port = port
         self.transport = None
         self.protocol = None
+        self.pulse = None
         self.is_connected = False
         self.reconnect = True
         self.timeout = timeout
@@ -37,12 +39,14 @@ class UPBClient:
     async def setup(self):
         """Set up the connection with automatic retry."""
         while True:
+            self.pulse = UPBPulse(
+                register_callback=self.handle_register_update,
+                signature_callback=self.handle_signature_update,
+                disconnect_callback=self.handle_disconnect_callback,
+                logger=self.logger)
             fut = self.loop.create_connection(
-                lambda: UPBProtocol(
-                    self,
-                    disconnect_callback=self.handle_disconnect_callback,
-                    register_callback=self.handle_register_update,
-                    signature_callback=self.handle_signature_update,
+                lambda: UPBTCPProto(
+                    self.pulse,
                     loop=self.loop, logger=self.logger),
                 host=self.host,
                 port=self.port)
@@ -79,31 +83,31 @@ class UPBClient:
         return info
 
     async def pim_get_firmware_version(self):
-        version = await self.protocol.pim_memory_read(UpbReg.UPB_REG_FIRMWAREVERSION)
+        version = await self.pulse.pim_memory_read(UpbReg.UPB_REG_FIRMWAREVERSION)
         return version
 
     async def pim_get_mode(self):
-        mode = await self.protocol.pim_memory_read(UpbReg.UPB_REG_PIMOPTIONS)
+        mode = await self.pulse.pim_memory_read(UpbReg.UPB_REG_PIMOPTIONS)
         return mode[0]
 
     async def pim_get_manufacturer(self):
-        manufacturer = await self.protocol.pim_memory_read(UpbReg.UPB_REG_MANUFACTURERID)
+        manufacturer = await self.pulse.pim_memory_read(UpbReg.UPB_REG_MANUFACTURERID)
         return manufacturer
 
     async def pim_get_product(self):
-        product = await self.protocol.pim_memory_read(UpbReg.UPB_REG_PRODUCTID)
+        product = await self.pulse.pim_memory_read(UpbReg.UPB_REG_PRODUCTID)
         return product
 
     async def pim_get_options(self):
-        options = await self.protocol.pim_memory_read(UpbReg.UPB_REG_UPBOPTIONS)
+        options = await self.pulse.pim_memory_read(UpbReg.UPB_REG_UPBOPTIONS)
         return options[0]
 
     async def pim_get_upb_version(self):
-        upb_version = await self.protocol.pim_memory_read(UpbReg.UPB_REG_UPBVERSION)
+        upb_version = await self.pulse.pim_memory_read(UpbReg.UPB_REG_UPBVERSION)
         return upb_version[0]
 
     async def pim_get_noisefloor(self):
-        noisefloor = await self.protocol.pim_memory_read(UpbReg.UPB_REG_NOISEFLOOR)
+        noisefloor = await self.pulse.pim_memory_read(UpbReg.UPB_REG_NOISEFLOOR)
         return noisefloor[0]
 
     def stop(self):
@@ -141,17 +145,17 @@ class UPBClient:
     async def update_signature(self, network, device):
         """Fetch register signature from device."""
         packet = encode_signature_request(network, device)
-        response = await self.protocol.send_packet(packet)
+        response = await self.pulse.send_packet(packet)
         return response['id_checksum'], response['setup_checksum'], response['ct_bytes']
 
     async def get_setup_time(self, network, device):
         packet = encode_setuptime_request(network, device)
-        response = await self.protocol.send_packet(packet)
+        response = await self.pulse.send_packet(packet)
         return response
 
     async def test_password(self, network, device, password):
         packet = encode_startsetup_request(network, device, password)
-        response = await self.protocol.send_packet(packet)
+        response = await self.pulse.send_packet(packet)
         assert(response['password'] == password)
         setup_time = await self.get_setup_time(network, device)
         if setup_time['setup_mode_timer'] != 0:
@@ -173,7 +177,7 @@ class UPBClient:
             else:
                 req_len = remaining
             packet = encode_register_request(network, device, start, req_len)
-            response = asyncio.ensure_future(self.protocol.send_packet(packet))
+            response = asyncio.ensure_future(self.pulse.send_packet(packet))
             tasks.append(response)
             index += req_len
         await asyncio.gather(*tasks)
@@ -221,7 +225,7 @@ class UPBClient:
                         good_password = await self.test_password(network, device, password_int)
                         if good_password:
                             packet = encode_register_request(network, device, 2, 2)
-                            response = await self.protocol.send_packet(packet)
+                            response = await self.pulse.send_packet(packet)
                             pw_register = unpack('>H', response['register_val'])[0]
                             assert(pw_register == password_int)
                             got_numeric = True
@@ -283,7 +287,7 @@ class UPBClient:
                         good_password = await self.test_password(network, device, password_int)
                         if good_password:
                             packet = encode_register_request(network, device, 2, 2)
-                            response = await self.protocol.send_packet(packet)
+                            response = await self.pulse.send_packet(packet)
                             pw_register = unpack('>H', response['register_val'])[0]
                             assert(pw_register == password_int)
                             break
@@ -299,7 +303,7 @@ async def create_upb_connection(port=None, host=None,
                                 disconnect_callback=None,
                                 reconnect_callback=None, loop=None,
                                 logger=None, timeout=None,
-                                reconnect_interval=None):
+                                reconnect_interval=10):
     """Create UPB Client class."""
     client = UPBClient(host, port=port,
                         disconnect_callback=disconnect_callback,

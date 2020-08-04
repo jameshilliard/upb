@@ -11,7 +11,7 @@ from upb.const import UpbMessage, UpbTransmission, PimCommand, UpbReg, \
 from upb.util import cksum, hexdump
 
 
-class UPBProtocol(asyncio.Protocol):
+class UPBPulse:
 
     def __init__(self, client=None, loop=None, logger=None, disconnect_callback=None,
         register_callback=None, signature_callback = None):
@@ -28,7 +28,6 @@ class UPBProtocol(asyncio.Protocol):
         self.disconnect_callback = disconnect_callback
         self.register_callback = register_callback
         self.signature_callback = signature_callback
-        self.server_transport = None
         self.buffer = b''
         self.last_command = {}
         self.last_transmitted = None
@@ -46,12 +45,16 @@ class UPBProtocol(asyncio.Protocol):
         self.active_packet = None
         self.in_transaction = False
         self.pulse = False
+        self.protocol = None
+
+    def write_packet(self, packet):
+        self.protocol.write_packet(packet)
 
     def _reset_cmd_timeout(self):
         """Reset timeout for command execution."""
         if self._cmd_timeout:
             self._cmd_timeout.cancel()
-        self._cmd_timeout = self.loop.call_later(2, self._resend_packet)
+        self._cmd_timeout = self.loop.call_later(10, self._resend_packet)
 
     async def pim_memory_read(self, address):
         cmd = PimCommand.UPB_PIM_READ
@@ -89,8 +92,6 @@ class UPBProtocol(asyncio.Protocol):
 
     def _process_pim_accept(self):
         self.logger.debug("got pim accept")
-        self.in_transaction = False
-        self.active_packet = None
 
     def _process_pim_busy(self):
         if self.in_transaction:
@@ -99,7 +100,7 @@ class UPBProtocol(asyncio.Protocol):
             msg += hexlify(packet).swapcase()
             msg += b'\r'
             self.logger.warning(f'resending packet: {hexdump(packet)}, msg: {msg}')
-            self.transport.write(msg)
+            self.write_packet(msg)
 
     def _process_received_packet(self, packet):
         active_transaction = self.in_flight.pop(self.last_transmitted, None)
@@ -107,6 +108,8 @@ class UPBProtocol(asyncio.Protocol):
         if active_transaction is not None:
             self._cmd_timeout.cancel()
             active_transaction.set_result(packet)
+            self.in_transaction = False
+            self.active_packet = None
 
     def _process_received_pim_reg(self, address, registers):
         active_transaction = self.in_flight_reg.pop(address, None)
@@ -114,6 +117,7 @@ class UPBProtocol(asyncio.Protocol):
             self._cmd_timeout.cancel()
             active_transaction.set_result(registers)
             self.in_transaction = False
+            self.active_packet = None
 
     def _resend_packet(self):
         """Write next packet in send queue."""
@@ -122,7 +126,7 @@ class UPBProtocol(asyncio.Protocol):
         msg += hexlify(packet).swapcase()
         msg += b'\r'
         self.logger.warning(f'resending packet due to timeout: {hexdump(packet)}, msg: {msg}')
-        self.transport.write(msg)
+        self.write_packet(msg)
         self._reset_cmd_timeout()
 
     def _send_next_packet(self):
@@ -148,18 +152,12 @@ class UPBProtocol(asyncio.Protocol):
             msg += hexlify(packet).swapcase()
             msg += b'\r'
             self.logger.debug(f'sending packet: {hexdump(packet)}, msg: {msg}')
-            self.transport.write(msg)
+            self.write_packet(msg)
             self._reset_cmd_timeout()
 
     def _handle_blackout(self):
         self.pulse = True
         self._send_next_packet()
-
-    def connection_made(self, transport):
-        self.logger.debug("connected to PIM")
-        self.connected = True
-        self.initial = True
-        self.transport = transport
 
     def set_state_zero(self):
         self.transmitted = False
@@ -403,15 +401,13 @@ class UPBProtocol(asyncio.Protocol):
         else:
             self.logger.error(f'PIM failed to parse line: {hexdump(line)}')
 
-    def data_received(self, data):
-        self.buffer += data
-        while b'\r' in self.buffer:
-            line, self.buffer = self.buffer.split(b'\r', 1)
-            if len(line) > 1:
-                self.line_received(line)
-        if self.server_transport:
-            self.server_transport.write(data)
+    def handle_connect_callback(self):
+        self.logger.debug("connected to PIM")
+        self.connected = True
+        self.initial = True
 
-    def connection_lost(self, *args):
+    def handle_disconnect_callback(self):
+        self.logger.error("connection lost")
         self.connected = False
         self.initial = False
+        self._cmd_timeout.cancel()
