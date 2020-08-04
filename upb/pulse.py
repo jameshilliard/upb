@@ -410,4 +410,5 @@ class UPBPulse:
         self.logger.error("connection lost")
         self.connected = False
         self.initial = False
-        self._cmd_timeout.cancel()
+        if self._cmd_timeout:
+            self._cmd_timeout.cancel()

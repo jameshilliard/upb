@@ -8,12 +8,14 @@ from upb.pulse import UPBPulse
 from upb.util import cksum, hexdump, encode_register_request, encode_signature_request, encode_startsetup_request, encode_setuptime_request
 from upb.device import UPBDevice
 from upb.proto.tcp_socket import UPBTCPProto
+from upb.proto.pulseworx_gateway import PulseworxGatewayProto
 
 class UPBClient:
 
     def __init__(self, host, port=2101, disconnect_callback=None,
                  reconnect_callback=None, loop=None, logger=None,
-                 timeout=10, reconnect_interval=10):
+                 timeout=10, reconnect_interval=10,
+                 username=None, password=None):
         """Initialize the UPB client wrapper."""
         if loop:
             self.loop = loop
@@ -25,6 +27,8 @@ class UPBClient:
             self.logger = logging.getLogger(__name__)
         self.host = host
         self.port = port
+        self.username = username
+        self.password = password
         self.transport = None
         self.protocol = None
         self.pulse = None
@@ -35,6 +39,10 @@ class UPBClient:
         self.disconnect_callback = disconnect_callback
         self.reconnect_callback = reconnect_callback
         self.devices = defaultdict(dict)
+        if self.username is not None and self.password is not None:
+            self.proto_type = "pulseworx_gateway"
+        else:
+            self.proto_type = "tcp_socket"
 
     async def setup(self):
         """Set up the connection with automatic retry."""
@@ -44,12 +52,22 @@ class UPBClient:
                 signature_callback=self.handle_signature_update,
                 disconnect_callback=self.handle_disconnect_callback,
                 logger=self.logger)
-            fut = self.loop.create_connection(
-                lambda: UPBTCPProto(
-                    self.pulse,
-                    loop=self.loop, logger=self.logger),
-                host=self.host,
-                port=self.port)
+            self.logger.info(f"proto_type: {self.proto_type}")
+            if self.proto_type == "pulseworx_gateway":
+                fut = self.loop.create_connection(
+                    lambda: PulseworxGatewayProto(
+                        self.pulse,
+                        username=self.username, password=self.password,
+                        loop=self.loop, logger=self.logger),
+                    host=self.host,
+                    port=self.port)
+            elif self.proto_type == "tcp_socket":
+                fut = self.loop.create_connection(
+                    lambda: UPBTCPProto(
+                        self.pulse,
+                        loop=self.loop, logger=self.logger),
+                    host=self.host,
+                    port=self.port)
             try:
                 self.transport, self.protocol = \
                     await asyncio.wait_for(fut, timeout=self.timeout)
@@ -59,6 +77,8 @@ class UPBClient:
                 self.logger.warning("Could not connect due to error: %s",
                                     str(exc))
             else:
+                if self.proto_type == "pulseworx_gateway":
+                    await self.protocol.authenticate()
                 self.is_connected = True
                 await self.pim_init()
                 if self.reconnect_callback:
@@ -303,13 +323,14 @@ async def create_upb_connection(port=None, host=None,
                                 disconnect_callback=None,
                                 reconnect_callback=None, loop=None,
                                 logger=None, timeout=None,
-                                reconnect_interval=10):
+                                reconnect_interval=10, username=None, password=None):
     """Create UPB Client class."""
     client = UPBClient(host, port=port,
                         disconnect_callback=disconnect_callback,
                         reconnect_callback=reconnect_callback,
                         loop=loop, logger=logger,
-                        timeout=timeout, reconnect_interval=reconnect_interval)
+                        timeout=timeout, reconnect_interval=reconnect_interval,
+                        username=username, password=password)
     await client.setup()
 
     return client
