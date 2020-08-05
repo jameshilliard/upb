@@ -79,8 +79,11 @@ class UPBClient:
             else:
                 if self.proto_type == "pulseworx_gateway":
                     await self.protocol.authenticate()
+                    await self.protocol.client_stop_pulse()
                 self.is_connected = True
                 await self.pim_init()
+                if self.proto_type == "pulseworx_gateway":
+                    await self.protocol.client_start_pulse()
                 if self.reconnect_callback:
                     self.reconnect_callback()
                 break

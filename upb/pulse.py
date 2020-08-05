@@ -278,6 +278,7 @@ class UPBPulse:
 
 
     def line_received(self, line):
+        self.logger.info(f"line: {line} hex: {hexdump(line)}")
         if UpbMessage.has_value(line[UPB_MESSAGE_TYPE]):
             command = UpbMessage(line[UPB_MESSAGE_TYPE])
             data = line[1:]

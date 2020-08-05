@@ -21,15 +21,20 @@ class PulseworxGatewayProto(asyncio.Protocol):
         else:
             self.logger = logging.getLogger(__name__)
         self._nt_cmd_timeout = None
+        self._gw_cmd_timeout = None
         self.pulse = pulse
+        self.pulse_waiter = None
         self.username = username
         self.password = password
         self.pulse.protocol = self
         self.buffer = bytearray()
         self.in_transaction = False
+        self.gw_cmd = None
+        self.active_packet = None
         self.in_flight = None
         self.wrapped = False
         self.waiters = deque()
+        self.gw_waiters = deque()
         self.auth_task = None
         self.challenge = None
         self.pim_info = {}
@@ -43,9 +48,9 @@ class PulseworxGatewayProto(asyncio.Protocol):
     def _resend_nt_packet(self):
         """Write next packet in send queue."""
         packet = self.active_packet
-        msg = packet + b'\x00'
-        self.logger.warning(f'resending packet due to timeout: {hexdump(packet)}, msg: {msg}')
-        self.transport.write(msg)
+        self.logger.warning(f'resending packet due to timeout: {hexdump(packet)}')
+        self.transport.write(packet)
+        self.write_gateway(cmd, packet)
         self._reset_nt_cmd_timeout()
 
     async def send_nt_packet(self, packet):
@@ -70,6 +75,55 @@ class PulseworxGatewayProto(asyncio.Protocol):
             self.logger.debug(f'sending nt packet: {hexdump(msg)}, msg: {msg}')
             self.transport.write(msg)
             self._reset_nt_cmd_timeout()
+
+    def _reset_gw_cmd_timeout(self):
+        """Reset timeout for command execution."""
+        if self._gw_cmd_timeout:
+            self._gw_cmd_timeout.cancel()
+        self._gw_cmd_timeout = self.loop.call_later(10, self._resend_gw_packet)
+
+    def _resend_gw_packet(self):
+        """Write next packet in send queue."""
+        cmd = self.gw_cmd
+        packet = self.active_packet
+        self.logger.warning(f'resending gw packet due to timeout: {hexdump(packet)}, msg: {packet}, cmd: {cmd}')
+        self.write_gateway(cmd, packet)
+        self._reset_gw_cmd_timeout()
+
+    async def send_gw_packet(self, cmd, packet):
+        fut = await self._send_gw_packet(cmd, packet)
+        return fut
+
+    def _send_gw_packet(self, cmd, packet):
+        """Add packet to send queue."""
+        fut = self.loop.create_future()
+        self.gw_waiters.append((fut, cmd, packet))
+        self._send_next_gw_packet()
+        return fut
+
+    def _send_next_gw_packet(self):
+        """Write next packet in send queue."""
+        if self.gw_waiters and self.in_transaction is False and self.in_flight is None:
+            waiter, cmd, packet = self.gw_waiters.popleft()
+            self.gw_cmd = cmd
+            self.in_flight = waiter
+            self.in_transaction = True
+            self.active_packet = packet
+            self.write_gateway(cmd, packet)
+            self._reset_gw_cmd_timeout()
+
+    def _handle_gw_response(self, cmd, packet):
+        if cmd == GatewayCmd.SERIAL_MESSAGE.value:
+            if len(packet) > 0:
+                self.pulse.line_received(packet[:-1])
+        elif self.in_transaction and self.gw_cmd:
+            self.logger.info(f"received gateway packet: {packet}, hex: {hexdump(packet)} length: {len(packet)}, cmd: {hex(cmd)}")
+            self._gw_cmd_timeout.cancel()
+            self.in_transaction = False
+            self.in_flight.set_result(packet)
+            self.in_flight = None
+            self.gw_cmd = None
+
 
     async def _client_hello(self):
         line = await self.send_nt_packet(b'UPStart/8.3.4/1')
@@ -113,6 +167,17 @@ class PulseworxGatewayProto(asyncio.Protocol):
             else:
                 self.logger.info(f"unexpected auth result: {result}")
 
+    async def client_start_pulse(self):
+        cmd = GatewayCmd.START_PULSE_MODE
+        timeout = 60
+        response = await self.send_gw_packet(cmd, timeout)
+        self.logger.info(f"start pulse response: {response}, hex: {hexdump(response)}")
+
+    async def client_stop_pulse(self):
+        cmd = GatewayCmd.EXIT_PULSE_MODE
+        response = await self.send_gw_packet(cmd, b'')
+        self.logger.info(f"stop pulse response: {response}, hex: {hexdump(response)}")
+
     async def authenticate(self):
         await self._client_hello()
         await self._client_send_auth()
@@ -127,12 +192,20 @@ class PulseworxGatewayProto(asyncio.Protocol):
     def write_packet(self, packet):
         assert(self.wrapped)
         cmd = GatewayCmd.SEND_TO_SERIAL
-        gtw_pkt = bytearray(len(packet) + 4)
+        self.write_gateway(cmd, packet)
+
+    def write_gateway(self, cmd, packet):
+        assert(self.wrapped)
+        if isinstance(packet, int):
+            length = 1
+        else:
+            length = len(packet)
+        gtw_pkt = bytearray(length + 4)
         gtw_pkt[0] = cmd
-        gtw_pkt[1:3] = pack('>H', len(packet))
-        gtw_pkt[3 : len(packet) + 3] = packet
-        gtw_pkt[len(packet) + 3] = cksum(gtw_pkt) -1
-        self.logger.info(f"sent gateway packet: {gtw_pkt}, hex: {hexdump(gtw_pkt)} length: {len(gtw_pkt)}")
+        gtw_pkt[1:3] = pack('>H', length)
+        gtw_pkt[3 : length + 3] = packet
+        gtw_pkt[length + 3] = cksum(gtw_pkt) -1
+        self.logger.info(f"sent gateway packet: {gtw_pkt}, hex: {hexdump(gtw_pkt)} length: {length}")
         self.transport.write(gtw_pkt)
 
     def connection_made(self, transport):
@@ -147,25 +220,12 @@ class PulseworxGatewayProto(asyncio.Protocol):
                 length = unpack('>H', self.buffer[1:3])[0]
                 if len(self.buffer) >= length + 4:
                     cmd = self.buffer[0]
-                    packet = self.buffer[0:length + 3]
+                    packet = bytes(self.buffer[3:length + 3])
                     self.logger.info(f"cmd: {hex(cmd)}, packet: {packet}, hex: {hexdump(packet)}, cksum: {hex(self.buffer[length + 3])}")
-                    cksum = self.buffer[length + 3]
-                    #comp_cksum = cksum(packet)
+                    #cksum = self.buffer[length + 3]
+                    #comp_cksum = cksum(self.buffer[0:length + 3])
                     #self.logger.info(f"cksum = {cksum}, comp_cksum = {comp_cksum}")
-                    if cmd == GatewayCmd.SEND_TO_SERIAL.value + 1:
-                        line = self.buffer[3:2 + length]
-                        self.logger.info(f"received gateway packet: {line}, hex: {hexdump(line)} length: {length}")
-                        if len(line) > 0:
-                            self.pulse.line_received(line)
-                    elif cmd == GatewayCmd.KEEP_ALIVE.value + 1:
-                        self.logger.info("got keep alive")
-                    elif cmd == GatewayCmd.SERIAL_MESSAGE:
-                        line = self.buffer[3:2 + length]
-                        self.logger.info(f"received gateway packet: {line}, hex: {hexdump(line)} length: {length}")
-                        if len(line) > 0:
-                            self.pulse.line_received(line)
-                    else:
-                        self.logger.info(f"received bad gateway cmd: {cmd.value}, packet: {line}, hex: {hexdump(line)} length: {length}")
+                    self._handle_gw_response(cmd, packet)
                     self.buffer = self.buffer[length+4:]
         else:
             while b'\x00' in self.buffer:
