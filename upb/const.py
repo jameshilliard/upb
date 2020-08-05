@@ -2,7 +2,7 @@
 Constants used across package
 """
 
-from enum import Enum
+from enum import IntEnum
 
 MINIMUM_BLINK_RATE = 20
 
@@ -15,7 +15,36 @@ PULSE_REPORT_BYTES = 3
 
 PACKETHEADER_LINKBIT = 0x80
 
-class UpbTransmission(Enum):
+class GatewayCmd(IntEnum):
+    KEEP_ALIVE = 0x10
+    SET_DATE_TIME = 0x20
+    GET_DATE_TIME = 0x22
+    SET_SCHEDULE = 0x28
+    GET_SCHEDULE = 0x2a
+    SEND_TO_SERIAL = 0x30
+    FILE_WRITE_OPEN = 0x50
+    FILE_WRITE = 0x52
+    FILE_WRITE_SIZE = 0x54
+    FILE_WRITE_CLOSE = 0x56
+    FILE_READ_OPEN = 0x60
+    FILE_READ = 0x62
+    FILE_READ_SIZE = 0x64
+    FILE_READ_CLOSE = 0x66
+    FILE_READ_DELETE = 0x70
+    DIR_LISTING = 0x80
+    START_PULSE_MODE = 0x90
+    EXIT_PULSE_MODE = 0x92
+    SERIAL_MESSAGE = 0xe0
+    DEVICE_STATE_CHANGE = 0xe2
+    DISCONNECT = 0xf0
+    PULSE_MODE_APP_CONNECTED = 0xf2
+    CMD_NAK = 0xff
+
+    @classmethod
+    def has_value(cls, value):
+        return value in cls._value2member_map_
+
+class UpbTransmission(IntEnum):
     UPB_MESSAGE = 0x55 # U
     UPB_PIM_ACCEPT = 0x41 # A
     UPB_PIM_BUSY = 0x42 # B
@@ -24,7 +53,7 @@ class UpbTransmission(Enum):
     UPB_TRANSMISSION_ACK = 0x4b # K
     UPB_TRANSMISSION_NAK = 0x4e # N
 
-class UpbMessage(Enum):
+class UpbMessage(IntEnum):
     UPB_MESSAGE_PIMREPORT = 0x50 # P
     UPB_MESSAGE_START = 0x58 # X
     UPB_MESSAGE_SYNC = 0x52 # R
@@ -52,12 +81,12 @@ class UpbMessage(Enum):
         return False
 
 
-class PimCommand(Enum):
+class PimCommand(IntEnum):
     UPB_NETWORK_TRANSMIT = 0x14
     UPB_PIM_READ = 0x12
     UPB_PIM_WRITE = 0x17
 
-class UpbReg(Enum):
+class UpbReg(IntEnum):
     UPB_REG_NETWORKID = 0x00
     UPB_REG_MODULEID = 0x01
     UPB_REG_PASSWORD = 0x02
@@ -77,7 +106,7 @@ class UpbReg(Enum):
     UPB_REG_NOISEFLOOR = 0xfa
     UPB_REG_NOISECOUNTS = 0xfb
 
-class UpbDeviceId(Enum):
+class UpbDeviceId(IntEnum):
     BROADCAST_DEVICEID = 0x00
     RESERVED1_DEVICEID = 0xfb
     RESERVED2_DEVICEID = 0xfc
@@ -89,19 +118,19 @@ class UpbDeviceId(Enum):
     def has_value(cls, value):
         return value in cls._value2member_map_
 
-class UpbReqAck(Enum):
+class UpbReqAck(IntEnum):
     REQ_ACKDEFAULT = 0x00
     REQ_ACKMESSAGE = 0x01
     REQ_NOACK = 0x02
     REQ_ACKNOREQUEUEONNAK = 0x04
 
-class UpbReqRepeater(Enum):
+class UpbReqRepeater(IntEnum):
     REP_NONREPEATER = 0x00
     REP_LOWREPEAT = 0x01
     REP_MEDIUMREPEAT = 0x02
     REP_HIGHREPEAT = 0x03
 
-class MdidSet(Enum):
+class MdidSet(IntEnum):
     MDID_CORE_COMMANDS = 0x00
     MDID_DEVICE_CONTROL_COMMANDS = 0x20
     MDID_RESERVED_COMMAND_SET1 = 0x40
@@ -111,7 +140,7 @@ class MdidSet(Enum):
     MDID_RESERVED_REPORT_SET2 = 0xc0
     MDID_EXTENDED_MESSAGE_SET = 0xe0
 
-class MdidCoreCmd(Enum):
+class MdidCoreCmd(IntEnum):
     MDID_CORE_COMMAND_NULL = 0x00
     MDID_CORE_COMMAND_WRITEENABLE = 0x01
     MDID_CORE_COMMAND_WRITEPROTECT = 0x02
@@ -131,7 +160,7 @@ class MdidCoreCmd(Enum):
     MDID_CORE_COMMAND_GETREGISTERVALUES = 0x10
     MDID_CORE_COMMAND_SETREGISTERVALUES = 0x11
 
-class MdidDeviceControlCmd(Enum):
+class MdidDeviceControlCmd(IntEnum):
     MDID_DEVICE_CONTROL_COMMAND_ACTIVATELINK = 0x00
     MDID_DEVICE_CONTROL_COMMAND_DEACTIVATELINK = 0x01
     MDID_DEVICE_CONTROL_COMMAND_GOTO = 0x02
@@ -141,7 +170,7 @@ class MdidDeviceControlCmd(Enum):
     MDID_DEVICE_CONTROL_COMMAND_REPORTSTATE = 0x10
     MDID_DEVICE_CONTROL_COMMAND_STORESTATE = 0x11
 
-class MdidCoreReport(Enum):
+class MdidCoreReport(IntEnum):
     MDID_DEVICE_CORE_REPORT_SETUPTIME = 0x05
     MDID_DEVICE_CORE_REPORT_DEVICESTATE = 0x06
     MDID_DEVICE_CORE_REPORT_DEVICESTATUS = 0x07
