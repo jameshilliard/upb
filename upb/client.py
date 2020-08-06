@@ -92,6 +92,7 @@ class UPBClient:
     async def pim_init(self):
         pim_info = await self.pim_info()
         self.logger.debug(pformat(pim_info))
+        result = await self.pim_set_mode()
 
     async def pim_info(self):
         info = {}
@@ -104,6 +105,10 @@ class UPBClient:
         info['upb_version'] = await self.pim_get_upb_version()
         info['noisefloor'] = await self.pim_get_noisefloor()
         return info
+
+    async def pim_set_mode(self):
+        mode = await self.pulse.pim_memory_write(UpbReg.UPB_REG_PIMOPTIONS, 0x00)
+        return mode
 
     async def pim_get_firmware_version(self):
         version = await self.pulse.pim_memory_read(UpbReg.UPB_REG_FIRMWAREVERSION)

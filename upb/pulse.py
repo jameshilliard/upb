@@ -77,6 +77,13 @@ class UPBPulse:
         fut = await self._send_packet(cmd, packet)
         return fut
 
+    async def pim_memory_write(self, address, data):
+        cmd = PimCommand.UPB_PIM_WRITE
+        data = pack('B', address.value) + pack('B', data)
+        packet = data + pack('B', cksum(data))
+        fut = await self._send_packet(cmd, packet)
+        return fut
+
     async def send_packet(self, packet):
         cmd = PimCommand.UPB_NETWORK_TRANSMIT
         fut = await self._send_packet(cmd, packet)
@@ -142,6 +149,9 @@ class UPBPulse:
                     self.waiters.append((waiter, cmd, packet))
                     return
             elif cmd == PimCommand.UPB_PIM_READ:
+                address = packet[0]
+                self.in_flight_reg[address] = waiter
+            elif cmd == PimCommand.UPB_PIM_WRITE:
                 address = packet[0]
                 self.in_flight_reg[address] = waiter
             else:
@@ -307,6 +317,9 @@ class UPBPulse:
                         register_val = register_data[1:]
                         cmd, packet = self.active_packet
                         if cmd == PimCommand.UPB_PIM_READ and start == packet[0]:
+                            self._process_received_pim_reg(start, register_val)
+                            self._send_next_packet()
+                        elif cmd == PimCommand.UPB_PIM_WRITE and start == packet[0]:
                             self._process_received_pim_reg(start, register_val)
                             self._send_next_packet()
                         self.logger.debug(f"start: {hex(start)} register_val: {hexdump(register_val)}")
