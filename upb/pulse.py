@@ -34,6 +34,7 @@ class UPBPulse:
         self.idle_count = 0
         self.in_flight = {}
         self.in_flight_reg = {}
+        self.in_flight_write = None
         self.message_buffer = b''
         self.pim_accept = False
         self.transmitted = False
@@ -72,6 +73,8 @@ class UPBPulse:
             registers = 0x01
         elif address == UpbReg.UPB_REG_NOISEFLOOR:
             registers = 0x01
+        elif address == UpbReg.UPB_REG_NETWORKID:
+            registers = 0x01
         data = pack('B', address.value) + pack('B', registers)
         packet = data + pack('B', cksum(data))
         fut = await self._send_packet(cmd, packet)
@@ -99,6 +102,12 @@ class UPBPulse:
 
     def _process_pim_accept(self):
         self.logger.debug("got pim accept")
+        if self.in_flight_write is not None:
+            self._cmd_timeout.cancel()
+            self.in_flight_write.set_result(True)
+            self.in_flight_write = None
+            self.in_transaction = False
+            self.active_packet = None
 
     def _process_pim_busy(self):
         if self.in_transaction:
@@ -153,7 +162,7 @@ class UPBPulse:
                 self.in_flight_reg[address] = waiter
             elif cmd == PimCommand.UPB_PIM_WRITE:
                 address = packet[0]
-                self.in_flight_reg[address] = waiter
+                self.in_flight_write = waiter
             else:
                 self.logger.error(f"unknown command: {cmd.name}")
             self.in_transaction = True
@@ -288,7 +297,7 @@ class UPBPulse:
 
 
     def line_received(self, line):
-        self.logger.info(f"line: {line} hex: {hexdump(line)}")
+        #self.logger.info(f"line: {line} hex: {hexdump(line)}")
         if UpbMessage.has_value(line[UPB_MESSAGE_TYPE]):
             command = UpbMessage(line[UPB_MESSAGE_TYPE])
             data = line[1:]
@@ -297,6 +306,7 @@ class UPBPulse:
             not UpbMessage.is_message_data(command):
                 self.logger.debug(f"PIM {command.name} data: {data}")
             if command == UpbMessage.UPB_MESSAGE_IDLE:
+                self.pulse = True
                 self._handle_blackout()
                 self.idle_count += 1
             else:

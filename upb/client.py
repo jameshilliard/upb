@@ -99,6 +99,7 @@ class UPBClient:
         info['firmware_version'] = await self.pim_get_firmware_version()
         info['mode'] = await self.pim_get_mode()
         info['manufacturer'] = await self.pim_get_manufacturer()
+        info['network'] = await self.pim_get_network()
         info['product'] = await self.pim_get_product()
         info['options'] = await self.pim_get_options()
         info['pulse'] = (info['options'] & 0x02) == 0
@@ -107,7 +108,7 @@ class UPBClient:
         return info
 
     async def pim_set_mode(self):
-        mode = await self.pulse.pim_memory_write(UpbReg.UPB_REG_PIMOPTIONS, 0x00)
+        mode = await self.pulse.pim_memory_write(UpbReg.UPB_REG_PIMOPTIONS, 0xf0)
         return mode
 
     async def pim_get_firmware_version(self):
@@ -117,6 +118,10 @@ class UPBClient:
     async def pim_get_mode(self):
         mode = await self.pulse.pim_memory_read(UpbReg.UPB_REG_PIMOPTIONS)
         return mode[0]
+
+    async def pim_get_network(self):
+        network = await self.pulse.pim_memory_read(UpbReg.UPB_REG_NETWORKID)
+        return network
 
     async def pim_get_manufacturer(self):
         manufacturer = await self.pulse.pim_memory_read(UpbReg.UPB_REG_MANUFACTURERID)

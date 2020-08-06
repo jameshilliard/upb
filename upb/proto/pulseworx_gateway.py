@@ -92,7 +92,7 @@ class PulseworxGatewayProto(asyncio.Protocol):
         """Write next packet in send queue."""
         cmd = self.gw_cmd
         packet = self.active_packet
-        self.logger.warning(f'resending gw packet due to timeout: {hexdump(packet)}, msg: {packet}, cmd: {cmd}')
+        self.logger.warning(f'resending gw packet due to timeout: {hexdump(packet)}, msg: {packet}, cmd: {hex(cmd)}')
         self.write_gateway(cmd, packet)
         self._reset_gw_cmd_timeout()
 
@@ -124,13 +124,16 @@ class PulseworxGatewayProto(asyncio.Protocol):
                 self.pulse.line_received(packet[:-1])
         elif cmd == GatewayCmd.KEEP_ALIVE.value + 1:
             self.logger.debug("got keep alive response")
-        elif self.in_transaction and self.gw_cmd:
-            self.logger.info(f"received gateway packet: {packet}, hex: {hexdump(packet)} length: {len(packet)}, cmd: {hex(cmd)}")
-            self._gw_cmd_timeout.cancel()
-            self.in_transaction = False
-            self.in_flight.set_result(packet)
-            self.in_flight = None
-            self.gw_cmd = None
+        elif self.in_transaction and self.gw_cmd and self.gw_cmd == cmd - 1:
+            self.logger.info(f"received gateway packet: cmd: {hex(cmd)}, self.gw_cmd: {hex(self.gw_cmd)}")
+            if cmd == (GatewayCmd.START_PULSE_MODE.value + 1) or \
+            cmd == (GatewayCmd.EXIT_PULSE_MODE.value + 1):
+                self.logger.info(f"received gateway packet: {packet}, hex: {hexdump(packet)} length: {len(packet)}, cmd: {hex(cmd)}")
+                self._gw_cmd_timeout.cancel()
+                self.in_transaction = False
+                self.in_flight.set_result(packet)
+                self.in_flight = None
+                self.gw_cmd = None
 
 
     async def _client_hello(self):
@@ -184,7 +187,6 @@ class PulseworxGatewayProto(asyncio.Protocol):
             self.logger.error("failed to start pulse mode")
         else:
             self._keep_alive()
-            self.pulse.pulse = True
         self.logger.info(f"start pulse response: {status}")
 
     async def client_stop_pulse(self):
@@ -245,7 +247,7 @@ class PulseworxGatewayProto(asyncio.Protocol):
                 length = unpack('>H', self.buffer[1:3])[0]
                 cmd = self.buffer[0]
                 packet = bytes(self.buffer[3:length + 3])
-                self.logger.info(f"cmd: {hex(cmd)}, packet: {packet}, hex: {hexdump(packet)}, cksum: {hex(self.buffer[length + 3])}")
+                #self.logger.info(f"cmd: {hex(cmd)}, packet: {packet}, hex: {hexdump(packet)}, cksum: {hex(self.buffer[length + 3])}")
                 #cksum = self.buffer[length + 3]
                 #comp_cksum = cksum(self.buffer[0:length + 3])
                 #self.logger.info(f"cksum = {cksum}, comp_cksum = {comp_cksum}")
