@@ -52,7 +52,7 @@ def encode_signature_request(network, device):
 def encode_startsetup_request(network, device, password):
     """Encode a message for the PIM"""
     mdid_cmd = MdidCoreCmd.MDID_CORE_COMMAND_STARTSETUP
-    data = pack('>H', password)
+    data = password
     packet = format_transmit_packet(network, device, mdid_cmd, data)
     return packet
 

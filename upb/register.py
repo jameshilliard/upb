@@ -9,32 +9,35 @@ class Dictionary:
     # Implement the iterator method such that dict(...) results in the correct
     # dictionary.
     def __iter__(self):
+        ignored = {'reserved1', 'reserved2', 'reserved3', 'reserved4', 'reserved5'}
         subtypes = (RockerAction, UPBButtonAction, UPBIndicator, UPBInput, IOMInput, TimedEvent, ESIComponent)
-        for k, t in self._fields_:
-            if k not in {'reserved1', 'reserved2', 'reserved3', 'reserved4', 'reserved5'}:
-                if isinstance(t, subtypes):
-                    nd = defaultdict(dict)
-                    for nk, nt in t._fields_:
-                        nd[nk] = getattr(t, nk)
-                    yield (k, dict(nd))
-                elif (issubclass(t, Structure)):
+        for k, v in self._fields_:
+            t = getattr(self, k)
+            if k not in ignored:
+                if isinstance(v, type) and issubclass(v, UPBID):
+                    sk = getattr(self, k)
                     for nk, nt in getattr(self, k):
                         yield (nk, getattr(self, nk))
-                elif (issubclass(t, Array)):
+                elif isinstance(v, type) and issubclass(v, subtypes):
+                    nd = defaultdict(dict)
+                    for nk, nv in t._fields_:
+                        nt = getattr(t, nk)
+                        nd[nk] = nt
+                    yield (k, dict(nd))
+                elif isinstance(v, type) and issubclass(v, Array):
                     ak = getattr(self, k)
                     al = []
-                    for ai in range(len(ak)):
-                        av = ak[ai]
-                        if isinstance(av, subtypes):
+                    for av in ak:
+                        if isinstance(type(av), type) and issubclass(type(av), subtypes):
                             nd = defaultdict(dict)
-                            for nk, nt in av._fields_:
+                            for nk, nv in av._fields_:
                                 nd[nk] = getattr(av, nk)
                             al.append(dict(nd))
                         else:
                             al.append(av)
                     yield (k, al)
                 else:
-                    yield (k, getattr(self, k))
+                    yield (k, t)
 
     # Implement the reverse method, with some special handling for dict's and
     # lists.

@@ -282,7 +282,7 @@ class UPBPulse:
             'mdid_cmd': mdid_cmd
         }
         if mdid_cmd == MdidCoreCmd.MDID_CORE_COMMAND_STARTSETUP:
-            password = unpack('>H', packet[6:8])[0]
+            password = packet[6:8]
             response['password'] = password
             self._process_received_packet(response)
         elif mdid_cmd == MdidCoreCmd.MDID_CORE_COMMAND_GETREGISTERVALUES:
