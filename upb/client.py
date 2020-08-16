@@ -79,7 +79,6 @@ class UPBClient:
             else:
                 if self.proto_type == "pulseworx_gateway":
                     await self.protocol.authenticate()
-                    await self.protocol.client_stop_pulse()
                 self.is_connected = True
                 await self.pim_init()
                 if self.proto_type == "pulseworx_gateway":
@@ -225,10 +224,9 @@ class UPBClient:
             self.logger.info(f"password diff = {upbid_diff}")
             password_test = bytearray(2)
             # Start with numeric only guesses if diff is < checksum for password = 9999
+            numeric_only = True
             if upbid_diff > 306:
                 numeric_only = False
-            else:
-                numeric_only = True
             got_numeric = False
             if numeric_only:
                 low_bits = upbid_diff % 16
@@ -248,7 +246,7 @@ class UPBClient:
                     password_test[1] |= (9 << 4)
                 else:
                     password_test[1] |= (high_bits << 4)
-                while True:
+                while got_numeric == False:
                     password_sum = password_test[0] + password_test[1]
                     assert(password_sum == upbid_diff)
                     low_tested = False
@@ -271,44 +269,41 @@ class UPBClient:
                             else:
                                 password_test[0] += 1
                                 password_test[1] -= 1
-                    else:
-                        # high bits fully maxed out, end numeric search
-                        if ((password_test[0] & 0xf0) >> 4) == 9 and ((password_test[1] & 0xf0) >> 4) == 9:
-                            break
-                        # check if high bits are fully shifted left
-                        elif ((password_test[0] & 0xf0) >> 4) == 9 or ((password_test[1] & 0xf0) >> 4) == 0:
-                            low_sum = (password_test[0] & 0xf) + (password_test[1] & 0xf)
-                            # check if we can shift a low bit to a high bit
-                            if low_sum >= 16:
-                                # push high bits right to reset the high bit search
-                                if ((password_test[0] & 0xf0) >> 4) > 0 or ((password_test[1] & 0xf0) >> 4) < 9:
-                                    to_shift = (9 - ((password_test[1] & 0xf0) >> 4)) * 16
-                                    password_test[0] -= to_shift
-                                    password_test[1] += to_shift
-                                low_remainder = low_sum - 9
-                                # try to shift low bits to high right
-                                if ((password_test[1] & 0xf0) >> 4) < 9:
-                                    password_test[0] -= 9
-                                    password_test[1] += (16 - low_remainder)
-                                # shift low bits to high left
-                                else:
-                                    # 16 - 9 = 7
-                                    password_test[0] += 7
-                                    password_test[1] -= low_remainder
-                            # no low bits to shift, end numberic search
-                            else:
-                                break
-                        # shift high bits left
-                        else:
-                            password_test[0] += 16
-                            password_test[1] -= 16
-                            # push low bits right
-                            if (password_test[0] & 0xf) > 0 or (password_test[1] & 0xf) < 9:
-                                to_shift = 9 - (password_test[1] & 0xf)
+                    # high bits fully maxed out, end numeric search
+                    if ((password_test[0] & 0xf0) >> 4) == 9 and ((password_test[1] & 0xf0) >> 4) == 9:
+                        break
+                    # check if high bits are fully shifted left
+                    elif ((password_test[0] & 0xf0) >> 4) == 9 or ((password_test[1] & 0xf0) >> 4) == 0:
+                        low_sum = (password_test[0] & 0xf) + (password_test[1] & 0xf)
+                        # check if we can shift a low bit to a high bit
+                        if low_sum >= 16:
+                            # push high bits right to reset the high bit search
+                            if ((password_test[0] & 0xf0) >> 4) > 0 or ((password_test[1] & 0xf0) >> 4) < 9:
+                                to_shift = (9 - ((password_test[1] & 0xf0) >> 4)) * 16
                                 password_test[0] -= to_shift
                                 password_test[1] += to_shift
-                        continue
-                    break
+                            low_remainder = low_sum - 9
+                            # try to shift low bits to high right
+                            if ((password_test[1] & 0xf0) >> 4) < 9:
+                                password_test[0] -= 9
+                                password_test[1] += (16 - low_remainder)
+                            # shift low bits to high left
+                            else:
+                                # 16 - 9 = 7
+                                password_test[0] += 7
+                                password_test[1] -= low_remainder
+                        # no low bits to shift, end numberic search
+                        else:
+                            break
+                    # shift high bits left
+                    else:
+                        password_test[0] += 16
+                        password_test[1] -= 16
+                        # push low bits right
+                        if (password_test[0] & 0xf) > 0 or (password_test[1] & 0xf) < 9:
+                            to_shift = 9 - (password_test[1] & 0xf)
+                            password_test[0] -= to_shift
+                            password_test[1] += to_shift
 
             if got_numeric == False:
                 if upbid_diff > 0xff:
@@ -317,10 +312,12 @@ class UPBClient:
                 else:
                     password_test[0] = 0
                     password_test[1] = upbid_diff
-                while password_test[0] <= 0xff:
-                    if (password_test[0] & 0xf0) >> 4 <= 9 and \
+                while password_test[0] <= 0xff and password_test[1] > 0:
+                    if numeric_only:
+                        is_numeric = False
+                    elif ((password_test[0] & 0xf0) >> 4) <= 9 and \
                     (password_test[0] & 0xf) <= 9 and \
-                    (password_test[1] & 0xf0) >> 4 <= 9 and \
+                    ((password_test[1] & 0xf0) >> 4) <= 9 and \
                     (password_test[1] & 0xf) <= 9:
                         is_numeric = True
                     else:

@@ -15,8 +15,6 @@ class UPBTCPProto(asyncio.Protocol):
         self._cmd_timeout = None
         self.pulse = pulse
         self.pulse.protocol = self
-        self.buffer = b''
-        self.message_buffer = b''
 
     def write_packet(self, packet):
         self.transport.write(packet)
@@ -27,11 +25,7 @@ class UPBTCPProto(asyncio.Protocol):
             self.pulse.handle_connect_callback()
 
     def data_received(self, data):
-        self.buffer += data
-        while b'\r' in self.buffer:
-            line, self.buffer = self.buffer.split(b'\r', 1)
-            if len(line) > 1:
-                self.pulse.line_received(line)
+        self.pulse.upb_data_received(data)
 
     def connection_lost(self, *args):
         if self.pulse.handle_disconnect_callback:

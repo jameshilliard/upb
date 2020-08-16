@@ -121,7 +121,7 @@ class PulseworxGatewayProto(asyncio.Protocol):
     def _handle_gw_response(self, cmd, packet):
         if cmd == GatewayCmd.SERIAL_MESSAGE.value:
             if len(packet) > 0:
-                self.pulse.line_received(packet[:-1])
+                self.pulse.upb_data_received(packet)
         elif cmd == GatewayCmd.KEEP_ALIVE.value + 1:
             self.logger.debug("got keep alive response")
         elif self.in_transaction and self.gw_cmd and self.gw_cmd == cmd - 1:
@@ -172,6 +172,7 @@ class PulseworxGatewayProto(asyncio.Protocol):
             elif result == b'AUTH SUCCEEDED':
                 self.logger.info("auth succeded")
                 self.wrapped = True
+                self._keep_alive()
                 self._nt_cmd_timeout.cancel()
                 if self.pulse.handle_connect_callback:
                     self.pulse.handle_connect_callback()

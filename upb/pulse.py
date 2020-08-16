@@ -45,7 +45,6 @@ class UPBPulse:
         self.waiters = deque()
         self.active_packet = None
         self.in_transaction = False
-        self.pulse = False
         self.protocol = None
 
     def write_packet(self, packet):
@@ -96,8 +95,7 @@ class UPBPulse:
         """Add packet to send queue."""
         fut = self.loop.create_future()
         self.waiters.append((fut, cmd, packet))
-        if not self.pulse:
-            self._send_next_packet()
+        self._send_next_packet()
         return fut
 
     def _process_pim_accept(self):
@@ -151,12 +149,7 @@ class UPBPulse:
             and len(self.in_flight_reg) <= 0:
             waiter, cmd, packet = self.waiters.popleft()
             if cmd == PimCommand.UPB_NETWORK_TRANSMIT:
-                if self.pulse:
-                    self.in_flight[packet] = waiter
-                else:
-                    self.logger.debug("waiting on pulse mode, requeuing transmission")
-                    self.waiters.append((waiter, cmd, packet))
-                    return
+                self.in_flight[packet] = waiter
             elif cmd == PimCommand.UPB_PIM_READ:
                 address = packet[0]
                 self.in_flight_reg[address] = waiter
@@ -175,7 +168,6 @@ class UPBPulse:
             self._reset_cmd_timeout()
 
     def _handle_blackout(self):
-        self.pulse = True
         self._send_next_packet()
 
     def set_state_zero(self):
@@ -306,7 +298,6 @@ class UPBPulse:
             not UpbMessage.is_message_data(command):
                 self.logger.debug(f"PIM {command.name} data: {data}")
             if command == UpbMessage.UPB_MESSAGE_IDLE:
-                self.pulse = True
                 self._handle_blackout()
                 self.idle_count += 1
             else:
@@ -424,6 +415,13 @@ class UPBPulse:
                     self.set_state_zero()
         else:
             self.logger.error(f'PIM failed to parse line: {hexdump(line)}')
+
+    def upb_data_received(self, data):
+        self.buffer += data
+        while b'\r' in self.buffer:
+            line, self.buffer = self.buffer.split(b'\r', 1)
+            if len(line) > 1:
+                self.line_received(line)
 
     def handle_connect_callback(self):
         self.logger.debug("connected to PIM")
