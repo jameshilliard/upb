@@ -301,7 +301,7 @@ class UPBClient:
                         password_test[1] -= 16
                         # push low bits right
                         if (password_test[0] & 0xf) > 0 or (password_test[1] & 0xf) < 9:
-                            to_shift = 9 - (password_test[1] & 0xf)
+                            to_shift = (password_test[0] & 0xf) - (password_test[1] & 0xf)
                             password_test[0] -= to_shift
                             password_test[1] += to_shift
 
