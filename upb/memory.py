@@ -92,7 +92,10 @@ class PCSProductID(IntFlag):
     PCS_KPR7  = 74 # KPR7 Controller Load Relay - 7 Button
     PCS_KPD7  = 75 # KPD7 Controller Load Dimmer - 7 Button
     PCS_WS1C  = 76 # WS1C relay switch with Power Relay Control
-    PCS_KPC7T = 77 # KPC7 Controller - 7 Button
+    PCS_KPC7T = 77 # KPC7-T Controller - 6 Button
+    PCS_KPLD7T = 78 # KPLD7-T Keypad Load Dimmer - 6 Button
+    PCS_KPLR7T = 79 # KPLR7-T Keypad Load Relay - 6 Button
+    PCS_KPLRC = 80 # KPLRC Keypad 7-Button - Power Relay Control
 
 @unique
 class MDProductID(IntFlag):
@@ -287,6 +290,7 @@ UPBKindSwitch = {
     PCSProductID.PCS_WS2,
     PCSProductID.PCS_WS1X,
     PCSProductID.PCS_WS1L,
+    PCSProductID.PCS_WS1C,
     HAIProductID.HAI_WS1,
     HAIProductID.HAI_WS2,
     HAIProductID.HAI_WS3,
@@ -342,6 +346,7 @@ UPBKindKeypad = {
     PCSProductID.PCS_KPC6,
     PCSProductID.PCS_KPC7,
     PCSProductID.PCS_KPC8,
+    PCSProductID.PCS_KPC7T,
     HAIProductID.HAI_WMC6,
     HAIProductID.HAI_WMC8,
     WMTProductID.WMT_MultiBtn,
@@ -356,7 +361,10 @@ UPBKindKeypadDimmer = {
     PCSProductID.PCS_KPLD8,
     PCSProductID.PCS_KPLR6,
     PCSProductID.PCS_KPR7,
-    PCSProductID.PCS_KPLR8
+    PCSProductID.PCS_KPLR8,
+    PCSProductID.PCS_KPLD7T,
+    PCSProductID.PCS_KPLR7T,
+    PCSProductID.PCS_KPLRC
 }
 
 UPBKindInput = {
