@@ -187,7 +187,6 @@ class UPBModule2(BigEndianStructure, Dictionary):
         ('reserved4', c_char * 56)
     ]
 
-# Keypad
 class UPBButtonAction(BigEndianStructure):
     _pack_ = 1
     _fields_ = [
@@ -206,6 +205,7 @@ class UPBIndicator(BigEndianStructure):
         ('preset2', c_uint8)
     ]
 
+# Keypad
 class UPBKeypad(BigEndianStructure, Dictionary):
     _pack_ = 1
     _anonymous_ = ('upbid',)
@@ -253,7 +253,6 @@ class UPBKeypadDimmer(BigEndianStructure, Dictionary):
         ('reserved3', c_char * 3)
     ]
 
-# Input control module
 class UPBInput(BigEndianStructure):
     _pack_ = 1
     _fields_ = [
@@ -263,6 +262,7 @@ class UPBInput(BigEndianStructure):
         ('close_cmd_id', c_uint8)
     ]
 
+# Input control module
 class UPBICM(BigEndianStructure, Dictionary):
     _pack_ = 1
     _anonymous_ = ('upbid',)
@@ -465,7 +465,6 @@ class UPBUFQ(BigEndianStructure, Dictionary):
         ('reserved5', c_char * 8)
     ]
 
-# WMT 3 input and 2 output module
 class IOMInput(BigEndianStructure):
     _pack_ = 1
     _fields_ = [
@@ -479,6 +478,7 @@ class IOMInput(BigEndianStructure):
         ('open_b2', c_uint8)
     ]
 
+# WMT 3 input and 2 output module
 class UPBIOM(BigEndianStructure, Dictionary):
     _pack_ = 1
     _anonymous_ = ('upbid',)
@@ -581,7 +581,6 @@ class DSTDate(BigEndianStructure):
         ('end_day', c_uint8)
     ]
 
-# TEC
 class TECFlash(BigEndianStructure):
     _pack_ = 1
     _fields_ = [
@@ -611,6 +610,7 @@ class TimedEvent(BigEndianStructure):
         ('receive_level', c_uint8)
     ]
 
+# TEC
 class UPBTEC(BigEndianStructure, Dictionary):
     _pack_ = 1
     _anonymous_ = ('upbid',)
@@ -624,7 +624,6 @@ class UPBTEC(BigEndianStructure, Dictionary):
         ('reserved2', c_char * 24)
     ]
 
-# ESI
 class ESIComponent(BigEndianStructure):
     _pack_ = 1
     _fields_ = [
@@ -633,6 +632,7 @@ class ESIComponent(BigEndianStructure):
         ('msg', c_uint8 * 7)
     ]
 
+# ESI
 class UPBESI(BigEndianStructure, Dictionary):
     _pack_ = 1
     _anonymous_ = ('upbid',)
