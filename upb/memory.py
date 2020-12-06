@@ -91,6 +91,8 @@ class PCSProductID(IntFlag):
     PCS_KPC7  = 73 # KPC7 Controller - 7 Button
     PCS_KPR7  = 74 # KPR7 Controller Load Relay - 7 Button
     PCS_KPD7  = 75 # KPD7 Controller Load Dimmer - 7 Button
+    PCS_WS1C  = 76 # WS1C relay switch with Power Relay Control
+    PCS_KPC7T = 77 # KPC7 Controller - 7 Button
 
 @unique
 class MDProductID(IntFlag):
